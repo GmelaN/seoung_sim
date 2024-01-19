@@ -29,7 +29,7 @@ channel.set_loss_model(prop_loss_model)
 channel.set_delay_model(prop_delay_model)
 
 n2 = NodeBuilder() \
-.set_device_params(BanTxParams(ban_id=2, node_id=2, recipient_id=0)) \
+.set_device_params(BanTxParams(ban_id=0, node_id=2, recipient_id=0)) \
 .set_mac(BanMac()) \
 .set_phy(BanPhy()) \
 .set_sscs(BanSSCS()) \
@@ -74,16 +74,21 @@ def start(event, node: Node = agent):
     ev.callbacks.append(node.m_sscs.send_beacon)
     node.env.schedule(ev, priority=0, delay=0)
 
-packet: Packet = Packet(packet_size=1)
+event = env.event()
+event._ok = True
+event.callbacks.append(start)
+env.schedule(event, priority=0, delay=0)
 
-n2.get_mac().mcps_data_request(
-    tx_packet=packet,
-    tx_params=BanTxParams(
-        ban_id=n2.get_mac().get_mac_params().ban_id,
-        node_id=n2.get_mac().get_mac_params().node_id,
-        recipient_id=0
-    )
-)
+packet: Packet = Packet(packet_size=10)
+
+# n2.get_mac().mcps_data_request(
+#     tx_packet=packet,
+#     tx_params=BanTxParams(
+#         ban_id=n2.get_mac().get_mac_params().ban_id,
+#         node_id=n2.get_mac().get_mac_params().node_id,
+#         recipient_id=0
+#     )
+# )
 
 # event = env.event()
 # event._ok = True
@@ -111,4 +116,4 @@ n2.get_mac().mcps_data_request(
 # env.schedule(event, priority=0, delay=200)
 
 # Run simulation
-env.run(until=5000)
+env.run(until=50)

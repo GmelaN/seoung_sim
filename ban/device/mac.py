@@ -5,6 +5,7 @@ from enum import Enum
 
 import simpy
 
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 from ban.base.tracer import Tracer
 from ban.base.utils import microseconds
@@ -35,13 +36,14 @@ class BanMac:
     # A slot length can be calculated as pAllocationSlotMin + (L) * pAllocationSlotResolution = 1000 us (1 ms)
     mAllocationSlotLength = 1  # ms
 
-    logger = logging.getLogger("BAN-MAC")
-    logger.setLevel(logging.DEBUG)
+    # logger = logging.getLogger("BAN-MAC")
+    # logger.setLevel(logging.DEBUG)
+    #
+    # loggingHandler = logging.StreamHandler()
+    # loggingHandler.setLevel(logging.DEBUG)
+    #
+    # logger.addHandler(loggingHandler)
 
-    loggingHandler = logging.StreamHandler()
-    loggingHandler.setLevel(logging.DEBUG)
-
-    logger.addHandler(loggingHandler)
 
     def __init__(self):
         self.__env = None
@@ -65,6 +67,7 @@ class BanMac:
         self.__tx_power = 0
         self.__initial_energy = 1
 
+        self.__logger = SeoungSimLogger()
 
     def set_env(self, env: simpy.Environment):
         self.__env = env
@@ -472,8 +475,8 @@ class BanMac:
                 pass
             elif tx_frame_type == BanFrameType.IEEE_802_15_6_MAC_DATA:
                 # TODO: WHAT IS THIS
-                if (microseconds(slot_duration) >= microseconds(remain_alloc_time)) or \
-                        (expected_tx_time + guard_time + ack_rx_time) >= microseconds(remain_alloc_time):
+                if (microseconds(slot_duration) >= remain_alloc_time or
+                        (expected_tx_time + guard_time + ack_rx_time) >= remain_alloc_time):
                     BanMac.logger.debug(
                         f"{self.__class__.__name__}[{self.__mac_params.node_id}] set_trx_state_confirm: "
                         + f"packet frame type: {tx_frame_type.name}"
@@ -528,10 +531,10 @@ class BanMac:
 
 
     def check_queue(self, event: simpy.Environment):
-        BanMac.logger.debug(
-            f"{self.__class__.__name__}[{self.__mac_params.node_id}] check_queue: "
-            + f"checking queue for pending TX requests..."
-        )
+        # BanMac.logger.debug(
+        #     f"{self.__class__.__name__}[{self.__mac_params.node_id}] check_queue: "
+        #     + f"checking queue for pending TX requests..."
+        # )
         if self.__mac_state == BanMacState.MAC_IDLE and self.__tx_queue.empty() is False and self.__tx_packet is None:
             BanMac.logger.debug(
                 f"{self.__class__.__name__}[{self.__mac_params.node_id}] check_queue: "
@@ -594,7 +597,7 @@ class BanMac:
         tx_params.node_id = self.__mac_params.node_id
         tx_params.recipient_id = self.__rx_packet.get_mac_header().sender_id
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
-        tx_params.seq_num = self.__rx_packet.get_mac_header().get_frame_control().seq_num
+        tx_params.seq_num = self.__rx_packet.get_mac_header().get_frame_control().sequence_number
 
         # ack_pkt.set_mac_header(
         #     BanFrameType.IEEE_802_15_6_MAC_CONTROL,
@@ -661,7 +664,7 @@ class BanMac:
 
     def __get_ack_wait_duration(self):
         return (self.get_phy().aTurnaroundTime + self.get_phy().get_phy_shr_duration() +
-                (math.ceil(6 * self.get_env().get_phy_symbols_per_octet())))
+                (math.ceil(6 * self.get_phy().get_phy_symbols_per_octet())))
 
 
     def __change_mac_state(self, new_state: BanMacState):

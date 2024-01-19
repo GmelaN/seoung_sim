@@ -7,6 +7,10 @@ from ban.base.packet import Packet
 
 
 class Channel:
+    logger = logging.getLogger("CHANNEL")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
     # TODO: builder 패턴 적용
     def __init__(self):
         self.__env = None
@@ -18,9 +22,6 @@ class Channel:
         self.__tx_packet: Packet = None
         self.__phy_list = list()  # send a data packet to all the registered phy modules
 
-        self.__logger = logging.getLogger("CHANNEL")
-        self.__logger.setLevel(logging.DEBUG)
-        self.__logger.addHandler(logging.StreamHandler())
 
     def add_phy_list(self, phy):
         self.__phy_list.append(phy)
@@ -38,7 +39,7 @@ class Channel:
         self.__tx_packet = tx_packet
 
     def start_tx(self, event):
-        self.__logger.debug(
+        Channel.logger.debug(
             f"Channel: starting TX"
             + f"packet size: {self.__tx_packet.get_size()}, "
             + f"from: {self.__tx_packet.get_mac_header().sender_id}, "

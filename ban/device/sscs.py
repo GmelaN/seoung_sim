@@ -52,19 +52,23 @@ class BanTxParams:
 
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
+    logger = logging.getLogger("SSCS")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
     ACTION_SET = [- 25, -24, -23, -22, -21, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2]    # dBm
 
     def __init__(self):
         self.__env = None
         self.__packet_list = list()
         self.__mac = None   # To interact with a MAC layer
-        self.__dqn_trainer = None  # To interact with a dqn_trainer
+        # self.__dqn_trainer = None  # To interact with a dqn_trainer
         self.__node_list = list()
         self.__tx_params = BanTxParams()
         self.__beacon_interval = milliseconds(255)  # ms
         self.__tx_power = 0   # dBm
 
-        self.dqn_status_info = list()
+        # self.dqn_status_info = list()
 
         self.__logger = logging.getLogger("BAN-SSCS")
 
@@ -74,11 +78,11 @@ class BanSSCS:
     def get_env(self):
         return self.__env
 
-    def set_dqn_trainer(self, dqn_trainer):
-        self.__dqn_trainer = dqn_trainer
+    # def set_dqn_trainer(self, dqn_trainer):
+    #     self.__dqn_trainer = dqn_trainer
 
-    def get_dqn_trainer(self):
-        return self.__dqn_trainer
+    # def get_dqn_trainer(self):
+    #     return self.__dqn_trainer
 
     def set_mac(self, mac):
         self.__mac = mac
@@ -91,18 +95,18 @@ class BanSSCS:
 
     def set_node_list(self, node_id):
         self.__node_list.append(node_id)
-        self.dqn_status_info.append(self.init_dqn_status_info(node_id))
+        # self.dqn_status_info.append(self.init_dqn_status_info(node_id))
 
-    def init_dqn_status_info(self, node_id):
-        new_dqn_status = DqnStatusInfo()
-        new_dqn_status.node_id = node_id
-        new_dqn_status.current_state = (-80, 0)   # initial state is (Rx power, distance)
-        new_dqn_status.current_action = 0
-        new_dqn_status.reward = 0
-        new_dqn_status.next_state = 0
-        new_dqn_status.done = True
-        new_dqn_status.steps = 0
-        return new_dqn_status
+    # def init_dqn_status_info(self, node_id):
+    #     new_dqn_status = DqnStatusInfo()
+    #     new_dqn_status.node_id = node_id
+    #     new_dqn_status.current_state = (-80, 0)   # initial state is (Rx power, distance)
+    #     new_dqn_status.current_action = 0
+    #     new_dqn_status.reward = 0
+    #     new_dqn_status.next_state = 0
+    #     new_dqn_status.done = True
+    #     new_dqn_status.steps = 0
+    #     return new_dqn_status
 
     def data_confirm(self, status: BanDataConfirmStatus):
         # ('Time:', round(self.m_env.now, 5), '  Transmission confirm: (NID:%d),' % self.m_mac.m_mac_params.node_id,
@@ -115,67 +119,74 @@ class BanSSCS:
         rx_power = rx_packet.get_spectrum_tx_params().tx_power
         sender_id = rx_packet.get_mac_header().sender_id
 
-        for dqn_status in self.dqn_status_info:
-            if dqn_status.node_id == sender_id:
-                # calculate the reward value
-                if dqn_status.current_action == 0:      # -25 dBm
-                    dqn_status.reward += 10
-                elif dqn_status.current_action == 1:    # -24 dBm
-                    dqn_status.reward += 9.5
-                elif dqn_status.current_action == 2:    # -23 dBm
-                    dqn_status.reward += 9
-                elif dqn_status.current_action == 3:    # -22 dBm
-                    dqn_status.reward += 8.5
-                elif dqn_status.current_action == 4:    # -21 dBm
-                    dqn_status.reward += 8
-                elif dqn_status.current_action == 5:    # -20 dBm
-                    dqn_status.reward += 7.5
-                elif dqn_status.current_action == 6:    # -18 dBm
-                    dqn_status.reward += 7
-                elif dqn_status.current_action == 7:    # -16 dBm
-                    dqn_status.reward += 6.5
-                elif dqn_status.current_action == 8:    # -14 dBm
-                    dqn_status.reward += 6
-                elif dqn_status.current_action == 9:    # -12 dBm
-                    dqn_status.reward += 5.5
-                elif dqn_status.current_action == 10:    # -10 dBm
-                    dqn_status.reward += 5
-                elif dqn_status.current_action == 11:    # -8 dBm
-                    dqn_status.reward += 4
-                elif dqn_status.current_action == 12:    # -6 dBm
-                    dqn_status.reward += 3
-                elif dqn_status.current_action == 13:    # -4 dBm
-                    dqn_status.reward += 2
-                elif dqn_status.current_action == 14:    # -2 dBm
-                    dqn_status.reward += 1
-                else:
-                    print('Invalid action', file=sys.stderr)
+        # for dqn_status in self.dqn_status_info:
+        #     if dqn_status.node_id == sender_id:
+        #         # calculate the reward value
+        #         if dqn_status.current_action == 0:      # -25 dBm
+        #             dqn_status.reward += 10
+        #         elif dqn_status.current_action == 1:    # -24 dBm
+        #             dqn_status.reward += 9.5
+        #         elif dqn_status.current_action == 2:    # -23 dBm
+        #             dqn_status.reward += 9
+        #         elif dqn_status.current_action == 3:    # -22 dBm
+        #             dqn_status.reward += 8.5
+        #         elif dqn_status.current_action == 4:    # -21 dBm
+        #             dqn_status.reward += 8
+        #         elif dqn_status.current_action == 5:    # -20 dBm
+        #             dqn_status.reward += 7.5
+        #         elif dqn_status.current_action == 6:    # -18 dBm
+        #             dqn_status.reward += 7
+        #         elif dqn_status.current_action == 7:    # -16 dBm
+        #             dqn_status.reward += 6.5
+        #         elif dqn_status.current_action == 8:    # -14 dBm
+        #             dqn_status.reward += 6
+        #         elif dqn_status.current_action == 9:    # -12 dBm
+        #             dqn_status.reward += 5.5
+        #         elif dqn_status.current_action == 10:    # -10 dBm
+        #             dqn_status.reward += 5
+        #         elif dqn_status.current_action == 11:    # -8 dBm
+        #             dqn_status.reward += 4
+        #         elif dqn_status.current_action == 12:    # -6 dBm
+        #             dqn_status.reward += 3
+        #         elif dqn_status.current_action == 13:    # -4 dBm
+        #             dqn_status.reward += 2
+        #         elif dqn_status.current_action == 14:    # -2 dBm
+        #             dqn_status.reward += 1
+        #         else:
+        #             print('Invalid action', file=sys.stderr)
 
-                sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
-                receiver_mobility = self.__mac.get_phy().get_mobility()
+                # sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
+                # receiver_mobility = self.__mac.get_phy().get_mobility()
+                #
+                # distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
 
-                distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
+                # dqn_status.next_state = (rx_power, distance)
+                # dqn_status.done = False  # allocate Tx power to this node and successfully receive the data packet
 
-                dqn_status.next_state = (rx_power, distance)
-                dqn_status.done = False  # allocate Tx power to this node and successfully receive the data packet
-
-                result = self.__dqn_trainer.set_observation(dqn_status.current_state, dqn_status.current_action,
-                                                          dqn_status.next_state, dqn_status.reward, dqn_status.steps,
-                                                          dqn_status.done)
+                # result = self.__dqn_trainer.set_observation(dqn_status.current_state, dqn_status.current_action,
+                #                                           dqn_status.next_state, dqn_status.reward, dqn_status.steps,
+                #                                           dqn_status.done)
 
                 # start new episode
-                if result is True:
-                    dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
-                    dqn_status.current_action = 0
-                    dqn_status.reward = 0
-                    dqn_status.next_state = 0
-                    dqn_status.done = True
-                    dqn_status.steps = 0
-                else:
-                    dqn_status.current_state = dqn_status.next_state
-                    dqn_status.steps += 1
+                # if result is True:
+                #     dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
+                #     dqn_status.current_action = 0
+                #     dqn_status.reward = 0
+                #     dqn_status.next_state = 0
+                #     dqn_status.done = True
+                #     dqn_status.steps = 0
+                # else:
+                #     dqn_status.current_state = dqn_status.next_state
+                #     dqn_status.steps += 1
 
-                break
+                # break
+
+        ##### added code #####
+        sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
+        receiver_mobility = self.__mac.get_phy().get_mobility()
+        ######################
+
+        distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
 
         self.__packet_list.append(rx_packet)
 
@@ -194,6 +205,10 @@ class BanSSCS:
         #     tx_params
         # )
 
+        BanSSCS.logger.debug(
+            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal..."
+        )
+
         self.get_mac().set_mac_header(
             packet=tx_packet,
             tx_params=tx_params,
@@ -207,13 +222,13 @@ class BanSSCS:
 
         for n_index in self.__node_list:
             # get the action from DQN trainer
-            for dqn_status in self.dqn_status_info:
-                if n_index == dqn_status.node_id:
-                    action = self.__dqn_trainer.get_action(dqn_status.current_state)
-                    dqn_status.current_action = action
-                    dqn_status.done = True
-                    self.__tx_power = BanSSCS.ACTION_SET[action]
-                    break
+            # for dqn_status in self.dqn_status_info:
+            #     if n_index == dqn_status.node_id:
+            #         action = self.__dqn_trainer.get_action(dqn_status.current_state)
+            #         dqn_status.current_action = action
+            #         dqn_status.done = True
+            #         self.__tx_power = BanSSCS.ACTION_SET[action]
+            #         break
 
             assigned_link = AssignedLinkElement()
             assigned_link.allocation_id = n_index
@@ -234,23 +249,24 @@ class BanSSCS:
         self.__env.schedule(event, priority=0, delay=self.__beacon_interval)
 
     def beacon_interval_timeout(self, event):
-        # Calculate the next_state, reward, done
-        for dqn_status in self.dqn_status_info:
-            # if the previous resource allocation (tx power) was failed
-            if dqn_status.done is True:
-                dqn_status.next_state = (-85, -1)  # Rx power beyond the rx_sensitivity
-                dqn_status.reward = -10
-                result = self.__dqn_trainer.set_observation(dqn_status.current_state, dqn_status.current_action,
-                                                          dqn_status.next_state, dqn_status.reward, dqn_status.steps,
-                                                          dqn_status.done)
-                # start new episode
-                if result is True:
-                    dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
-                    dqn_status.current_action = 0
-                    dqn_status.reward = 0
-                    dqn_status.next_state = 0
-                    dqn_status.done = True
-                    dqn_status.steps = 0
+        # # Calculate the next_state, reward, done
+        # for dqn_status in self.dqn_status_info:
+        #     # if the previous resource allocation (tx power) was failed
+        #     if dqn_status.done is True:
+        #         dqn_status.next_state = (-85, -1)  # Rx power beyond the rx_sensitivity
+        #         dqn_status.reward = -10
+        #         result = self.__dqn_trainer.set_observation(dqn_status.current_state, dqn_status.current_action,
+        #                                                   dqn_status.next_state, dqn_status.reward, dqn_status.steps,
+        #                                                   dqn_status.done)
+        #         # start new episode
+        #         if result is True:
+        #             dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
+        #             dqn_status.current_action = 0
+        #             dqn_status.reward = 0
+        #             dqn_status.next_state = 0
+        #             dqn_status.done = True
+        #             dqn_status.steps = 0
+        pass
 
     def send_data(self, tx_packet: Packet):
         # print("send_data: ", tx_packet.get_spectrum_tx_params().tx_power)

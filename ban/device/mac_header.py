@@ -62,7 +62,7 @@ class BanMacHeader:
         self.get_frame_control().ack_policy = ack_policy
         self.get_frame_control().sequence_number = sequence_number
 
-    def get_frame_control(self):
+    def get_frame_control(self) -> FrameControl:
         if self.__frame_control is None:
             raise Exception("frame control is not set.")
 
