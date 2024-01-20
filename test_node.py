@@ -77,7 +77,7 @@ packet: Packet = Packet(packet_size=10)
 event = device.env.event()
 event._ok = True
 event.callbacks.append(device.m_sscs.send_data(tx_packet=packet))
-device.env.schedule(event, priority=0, delay=0.1)
+device.env.schedule(event, priority=0, delay=0.01)
 
 # Run simulation
-env.run(until=1)
+env.run(until=0.1)

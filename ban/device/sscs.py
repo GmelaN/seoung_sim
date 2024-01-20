@@ -108,8 +108,11 @@ class BanSSCS:
     #     return new_dqn_status
 
     def data_confirm(self, status: BanDataConfirmStatus):
-        # ('Time:', round(self.m_env.now, 5), '  Transmission confirm: (NID:%d),' % self.m_mac.m_mac_params.node_id,
-        #      'result:', status,)
+        BanSSCS.logger.log(
+            sim_time=self.get_env().now,
+            msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] MAC reported transaction result: {status.name}",
+            level=logging.INFO
+        )
         pass
 
     def data_indication(self, rx_packet: Packet):

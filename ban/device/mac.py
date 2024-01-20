@@ -419,7 +419,7 @@ class BanMac:
                 tx_header = self.__tx_packet.get_mac_header()
 
                 # TODO: sequence number는 무엇인가
-                if rx_header.get_frame_control().sequence_number == tx_header.get_frame_control().seq_num:
+                if rx_header.get_frame_control().sequence_number == tx_header.get_frame_control().sequence_number:
                     # if the packet that just sent before is a data frame
                     if tx_header.get_frame_control().frame_type == BanFrameType.IEEE_802_15_6_MAC_DATA:
                         # update trace info
@@ -441,7 +441,7 @@ class BanMac:
                         event = self.__env.event()
                         event._ok = True
                         event.callbacks.append(self.check_queue)
-                        self.__env.schedule(event, priority=0, delay=self.pSIFS * 0.000001)
+                        self.get_env().schedule(event, priority=0, delay=self.pSIFS * 0.000001)
                     else:
                         pass
                 else:
@@ -449,8 +449,8 @@ class BanMac:
                     self.__prev_tx_status = False   # mark the current Tx result as a fail
                     self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_COUNTER_ERROR)
 
-        # else:
-            # print("error")
+        else:
+            print("error")
 
 
     # Callback function (called from PHY)
