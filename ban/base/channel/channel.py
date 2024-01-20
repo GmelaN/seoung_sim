@@ -3,13 +3,12 @@ import logging
 from simpy import Environment
 
 from ban.base.channel.base_channel import DelayModel, LossModel, SpectrumSignalParameters
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 
 
 class Channel:
-    logger = logging.getLogger("CHANNEL")
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler())
+    logger = SeoungSimLogger(logger_name="CHANNEL", level=logging.DEBUG)
 
     # TODO: builder 패턴 적용
     def __init__(self):
@@ -29,6 +28,9 @@ class Channel:
     def set_env(self, env: Environment):
         self.__env = env
 
+    def get_env(self):
+        return self.__env
+
     def set_loss_model(self, loss_model: LossModel):
         self.__loss_model = loss_model
 
@@ -39,8 +41,10 @@ class Channel:
         self.__tx_packet = tx_packet
 
     def start_tx(self, event):
-        Channel.logger.debug(
-            f"Channel: starting TX"
+        Channel.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"\tChannel: starting TX, "
             + f"packet size: {self.__tx_packet.get_size()}, "
             + f"from: {self.__tx_packet.get_mac_header().sender_id}, "
             + f"to: {self.__tx_packet.get_mac_header().recipient_id}, "

@@ -7,6 +7,7 @@ from typing import Tuple
 import simpy
 
 from ban.base.channel.base_channel import AntennaModel, SpectrumSignalParameters
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.mobility import MobilityModel
 from ban.base.packet import Packet
 from ban.base.utils import seconds
@@ -80,13 +81,7 @@ class BanPhy:
     # the turnaround time for switching the transceiver from RX to TX or vice versa
     aTurnaroundTime = 12
 
-    logger = logging.getLogger("BAN-PHY")
-    logger.setLevel(logging.DEBUG)
-
-    loggingHandler = logging.StreamHandler()
-    loggingHandler.setLevel(logging.DEBUG)
-
-    logger.addHandler(loggingHandler)
+    logger = SeoungSimLogger(logger_name="BAN-PHY", level=logging.DEBUG)
 
     def __init__(self):
         self.__env = None
@@ -187,8 +182,11 @@ class BanPhy:
         else:
             status = BanPhyTRxState.IEEE_802_15_6_PHY_UNSUPPORTED_ATTRIBUTE
 
-        BanPhy.logger.debug(
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] set_attribute_request: processing attribute request, "
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] set_attribute_request: "
+            + f"processing attribute request, "
             + f"{attribute_id.name}: {attribute_details}"
         )
 
@@ -206,8 +204,11 @@ class BanPhy:
         return rate * 1000.0
 
     def set_trx_state_request(self, new_state: BanPhyTRxState):
-        BanPhy.logger.debug(
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] set_trx_state_request: received SET_TRX_STATE.request, "
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] set_trx_state_request: "
+            + f"received SET_TRX_STATE.request, "
             + f"from: {self.__trx_state.name}, "
             + f"to: {new_state.name}"
         )
@@ -272,8 +273,11 @@ class BanPhy:
         self.__trx_state = new_state
 
     def pd_data_request(self, tx_packet: Packet):
-        BanPhy.logger.debug(
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] pd_data_request: received PD-DATA.request, "
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"\t{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] pd_data_request: "
+            + f"received PD-DATA.request, "
             + f"packet size: {tx_packet.get_size()}, "
             + f"from : {tx_packet.get_mac_header().sender_id}, "
             + f"to: {tx_packet.get_mac_header().recipient_id}."
@@ -312,8 +316,9 @@ class BanPhy:
             self.__mac.pd_data_confirm(self.__trx_state)
 
     def end_tx(self, event):
-        BanPhy.logger.debug(
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] end_tx: starting tx"
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] end_tx: END TX"
         )
         # If the transmission successes
         self.__mac.pd_data_confirm(BanPhyTRxState.IEEE_802_15_6_PHY_SUCCESS)
@@ -327,8 +332,10 @@ class BanPhy:
         # if the transmission fails
 
     def start_rx(self, event):
-        BanPhy.logger.debug(
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] start_rx: starting rx"
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] start_rx: START RX"
         )
 
         if self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_RX_ON:
@@ -353,6 +360,10 @@ class BanPhy:
             self.__cca_peak_power = power
 
         rx_duration = self.calc_tx_time(self.__rx_pkt)
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=f"\tRX duration: {rx_duration}"
+        )
 
         event = self.__env.event()
         event._ok = True
@@ -361,9 +372,13 @@ class BanPhy:
 
     def end_rx(self, event):
         # If the packet was successfully received, push it up the stack
+        BanPhy.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"\t{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] "
+            + f"end_rx: packet arrived, status: {self.__rx_pkt.success}"
+        )
         if self.__rx_pkt.success is True:
-            print("DEBUG: end_rx: ", self.__rx_pkt.get_spectrum_tx_params().tx_power)
-            print("DEBUG: end_rx: ", self.__rx_pkt.get_mac_header().get_tx_params())
             self.__mac.pd_data_indication(self.__rx_pkt)
 
         if self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_RX:

@@ -13,11 +13,10 @@ from ban.device.mac import BanMac
 from ban.device.node import NodeBuilder, Node
 from ban.device.phy import BanPhy
 from ban.device.sscs import BanTxParams, BanSSCS
-import logging
+
 
 # Test start
 env = simpy.Environment()  # Create the SimPy environment
-
 
 # channel
 channel = Channel()      # All nodes share a channel environment
@@ -28,8 +27,8 @@ prop_delay_model = PropDelayModel()
 channel.set_loss_model(prop_loss_model)
 channel.set_delay_model(prop_delay_model)
 
-n2 = NodeBuilder() \
-.set_device_params(BanTxParams(ban_id=0, node_id=2, recipient_id=0)) \
+device = NodeBuilder() \
+.set_device_params(BanTxParams(ban_id=0, node_id=1, recipient_id=0)) \
 .set_mac(BanMac()) \
 .set_phy(BanPhy()) \
 .set_sscs(BanSSCS()) \
@@ -39,13 +38,13 @@ n2 = NodeBuilder() \
 .build()
 
 mob_n1 = MobilityModel(BodyPosition.LEFT_ELBOW)
-n2.get_phy().set_mobility(mob_n1)
+device.get_phy().set_mobility(mob_n1)
 #
 # n2.get_mac().set_mac_params(BanTxParams(ban_id=0, node_id=1, recipient_id=10))
 
 
 agent = NodeBuilder() \
-.set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=2)) \
+.set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \
 .set_mac(BanMac()) \
 .set_phy(BanPhy()) \
 .set_csma_ca(CsmaCa()) \
@@ -55,65 +54,30 @@ agent = NodeBuilder() \
 .build()
 
 mob_agent = MobilityModel(BodyPosition.RIGHT_LOWER_TORSO)
-agent.m_phy.set_mobility(mob_agent)
+agent.get_phy().set_mobility(mob_agent)
 
 mobility_helper = MobilityHelper(env)
 mobility_helper.add_mobility_list(mob_n1)
 mobility_helper.add_mobility_list(mob_agent)
 
 
-agent.m_sscs.set_node_list(n2.get_mac().get_mac_params().node_id)
-# agent.m_sscs.set_tx_params(BanTxParams(ban_id=2, node_id=2, recipient_id=0))
+agent.m_sscs.set_node_list(device.get_mac().get_mac_params().node_id)
 
+# agent.m_sscs.set_tx_params(BanTxParams(ban_id=2, node_id=2, recipient_id=0))
 # n2.m_sscs.set_tx_params(BanTxParams(ban_id=0, node_id=0, recipient_id=2))
 
-def start(event, node: Node = agent):
-    print("staring...")
-    ev = node.env.event()
-    ev._ok = True
-    ev.callbacks.append(node.m_sscs.send_beacon)
-    node.env.schedule(ev, priority=0, delay=0)
 
-event = env.event()
-event._ok = True
-event.callbacks.append(start)
-env.schedule(event, priority=0, delay=0)
+ev = agent.env.event()
+ev._ok = True
+ev.callbacks.append(agent.m_sscs.send_beacon)
+agent.env.schedule(ev, priority=0, delay=0)
 
 packet: Packet = Packet(packet_size=10)
 
-# n2.get_mac().mcps_data_request(
-#     tx_packet=packet,
-#     tx_params=BanTxParams(
-#         ban_id=n2.get_mac().get_mac_params().ban_id,
-#         node_id=n2.get_mac().get_mac_params().node_id,
-#         recipient_id=0
-#     )
-# )
-
-# event = env.event()
-# event._ok = True
-# event.callbacks.append(start)
-#
-# env.schedule(event, priority=0, delay=0)
-
-
-# event = env.event()
-# event._ok = True
-# event.callbacks.append(n2.generate_data)
-#
-# env.schedule(event, priority=0, delay=0)
-#
-# event = env.event()
-# event._ok = True
-# event.callbacks.append(mobility_helper.do_walking)
-#
-# env.schedule(event, priority=0, delay=100)
-
-# event = env.event()
-# event._ok = True
-# event.callbacks.append(n2.get_mac().show_result)
-#
-# env.schedule(event, priority=0, delay=200)
+event = device.env.event()
+event._ok = True
+event.callbacks.append(device.m_sscs.send_data(tx_packet=packet))
+device.env.schedule(event, priority=0, delay=0.1)
 
 # Run simulation
-env.run(until=50)
+env.run(until=1)

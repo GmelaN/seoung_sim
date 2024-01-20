@@ -3,6 +3,7 @@ from enum import Enum
 import sys
 from attr import dataclass
 
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 from ban.base.utils import milliseconds
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
@@ -52,9 +53,7 @@ class BanTxParams:
 
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
-    logger = logging.getLogger("SSCS")
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler())
+    logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
 
     ACTION_SET = [- 25, -24, -23, -22, -21, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2]    # dBm
 
@@ -205,7 +204,9 @@ class BanSSCS:
         #     tx_params
         # )
 
-        BanSSCS.logger.debug(
+        BanSSCS.logger.log(
+            sim_time=self.get_env().now,
+            msg=
             f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal..."
         )
 
@@ -235,6 +236,7 @@ class BanSSCS:
             assigned_link.interval_start = start_offset
             assigned_link.interval_end = num_slot
             assigned_link.tx_power = self.__tx_power  # get the tx power (action) from the DQN
+            # assigned_link.tx_power = -80  # get the tx power (action) from the DQN
             start_offset += (num_slot + 1)
             if start_offset > beacon_length:
                 break

@@ -9,6 +9,10 @@ class BanFrameType(Enum):
     IEEE_802_15_6_MAC_DATA = 2
 
 
+class BanRecipientType(Enum):
+    IEEE_802_15_6_BROADCAST = 999
+
+
 class BanFrameSubType(Enum):
     WBAN_MANAGEMENT_BEACON = 0
     WBAN_CONTROL_IACK = 1
