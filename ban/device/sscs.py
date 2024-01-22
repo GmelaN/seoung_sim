@@ -110,7 +110,8 @@ class BanSSCS:
     def data_confirm(self, status: BanDataConfirmStatus):
         BanSSCS.logger.log(
             sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] MAC reported transaction result: {status.name}",
+            msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] "
+                + f"MAC reported transaction result: {status.name}",
             level=logging.INFO
         )
         pass
@@ -210,7 +211,8 @@ class BanSSCS:
         BanSSCS.logger.log(
             sim_time=self.get_env().now,
             msg=
-            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal..."
+            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal...\n",
+            # newline="\n"
         )
 
         self.get_mac().set_mac_header(
@@ -247,13 +249,18 @@ class BanSSCS:
 
         self.__mac.mlme_data_request(tx_packet)
 
-        event = self.__env.event()
+        event = self.get_env().event()
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         event.callbacks.append(self.send_beacon)
-        self.__env.schedule(event, priority=0, delay=self.__beacon_interval)
+        self.get_env().schedule(event, priority=0, delay=self.__beacon_interval)
 
     def beacon_interval_timeout(self, event):
+        BanSSCS.logger.log(
+            sim_time=self.get_env().now,
+            msg=f"{self.__class__.__name__}[{self.__tx_params.node_id}] beacon interval timeout triggered.",
+            level=logging.DEBUG
+        )
         # # Calculate the next_state, reward, done
         # for dqn_status in self.dqn_status_info:
         #     # if the previous resource allocation (tx power) was failed

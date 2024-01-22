@@ -101,15 +101,28 @@ class BanPhy:
 
         # TODO: BanPhyDataAndSymbolRates의 각 행은 BanPhyOption의 각 옵션별 항목인지?
         self.__data_symbol_rates: Tuple[BanPhyDataAndSymbolRates, ...] = tuple(
-            BanPhyDataAndSymbolRates(i, j) for i, j in (
-                (20.0, 20.0), (40.0, 40.0), (250.0, 12.5), (250.0, 50.0), (100.0, 25.0), (250.0, 62.5), (250.0, 62.5)
+            BanPhyDataAndSymbolRates(i, j)
+            for i, j in (
+                (20.0, 20.0),
+                (40.0, 40.0),
+                (250.0, 12.5),
+                (250.0, 50.0),
+                (100.0, 25.0),
+                (250.0, 62.5),
+                (250.0, 62.5)
             )
         )
 
         self.__ppdu_header_symbol_num: Tuple[BanPhyPpduHeaderSymbolNumber, ...] = tuple(
-            BanPhyPpduHeaderSymbolNumber(i, j, k) for i, j, k in (
-                (32.0, 8.0, 8.0), (32.0, 8.0, 8.0), (2.0, 1.0, 0.4), (6.0, 1.0, 1.6),
-                (8.0, 2.0, 2.0), (8.0, 2.0, 2.0), (8.0, 2.0, 2.0)
+            BanPhyPpduHeaderSymbolNumber(i, j, k)
+            for i, j, k in (
+                (32.0, 8.0, 8.0),
+                (32.0, 8.0, 8.0),
+                (2.0, 1.0, 0.4),
+                (6.0, 1.0, 1.6),
+                (8.0, 2.0, 2.0),
+                (8.0, 2.0, 2.0),
+                (8.0, 2.0, 2.0)
             )
         )
 
@@ -362,7 +375,7 @@ class BanPhy:
         rx_duration = self.calc_tx_time(self.__rx_pkt)
         BanPhy.logger.log(
             sim_time=self.get_env().now,
-            msg=f"\tRX duration: {rx_duration}"
+            msg=f"\tRX will end at: {self.get_env().now + rx_duration:.10f}"
         )
 
         event = self.__env.event()

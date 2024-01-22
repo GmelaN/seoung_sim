@@ -18,6 +18,7 @@ class SeoungSimLogger:
 
         self.logger.addHandler(loggingHandler)
 
-    def log(self, sim_time: SimTime, msg: str, level: int = None):
-        full_message = f"[SimTime: {sim_time:.10f}] {msg}"
+    def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = ""):
+
+        full_message = f"{newline}[SimTime: {sim_time:.10f}] {msg}"
         self.logger.log(level=self.level if level is None else level, msg=full_message)

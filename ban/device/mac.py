@@ -207,7 +207,7 @@ class BanMac:
         # Push the packet into the Tx queue
         self.__tx_queue.put_nowait(tx_packet)
 
-        self.check_queue(None)
+        self.check_queue(self.get_env())
 
 
     # Callback function (called from PHY)
@@ -233,19 +233,29 @@ class BanMac:
                 self.set_mac_state(BanMacState.MAC_ACK_PENDING)
 
                 # ACK 대기 시간 설정
-                ack_wait_time = self.__get_ack_wait_duration() * 1000 * 1000 / self.get_phy().get_data_or_symbol_rate(False)
-                self.__ack_wait_time = microseconds(ack_wait_time)
+                # ack_wait_time = self.__get_ack_wait_duration() * 1000 * 1000 / self.get_phy().get_data_or_symbol_rate(is_data=False)
+                # self.__ack_wait_time = microseconds(ack_wait_time)
+                # self.__ack_wait_time += self.get_phy().calc_tx_time(self.__tx_packet) * 2
+                # TODO: ACK 대기 시간 검증
+                # self.__ack_wait_time += self.get_phy().aTurnaroundTime * 2
+
+                self.__ack_wait_time = microseconds(
+                    self.__get_ack_wait_duration() * 1000 * 1000 / self.get_phy().get_data_or_symbol_rate(is_data=False)
+                )
+
                 self.__ack_wait_time += (self.get_phy().calc_tx_time(self.__tx_packet) * 2)
+
+                self.__ack_wait_time += microseconds(self.get_phy().aTurnaroundTime) * 4
 
                 # ACK timeout 이벤트 등록
                 BanMac.logger.log(
                     sim_time=self.get_env().now,
-                    msg=f"\t ACK timeout at: {self.get_env().now + self.__ack_wait_time:.10f}"
+                    msg=f"\tACK timeout at: {self.get_env().now + self.__ack_wait_time:.10f}"
                 )
                 event = self.__env.event()
                 event._ok = True
                 event.callbacks.append(self.ack_wait_timeout)
-                self.__env.schedule(event, priority=0, delay=self.__ack_wait_time)
+                self.__env.schedule(event, priority=0, delay=self.__ack_wait_time)# + 0.002)
 
             else:
                 # ACK 수신 대기를 할 필요가 없는 경우
@@ -284,8 +294,8 @@ class BanMac:
         BanMac.logger.log(
             sim_time=self.get_env().now,
             msg=
-            f"{self.__class__.__name__}[{self.__mac_params.node_id}] pd_data_indication: processing PD-DATA.indication, "
-            + f"rx_packet size: {rx_packet.get_size()}, "
+            f"{self.__class__.__name__}[{self.__mac_params.node_id}] pd_data_indication: processing PD-DATA.indication,"
+            + f" rx_packet size: {rx_packet.get_size()}, "
             + f"packet type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}, "
             + f"from: {rx_packet.get_mac_header().sender_id}, "
             + f"to: {rx_packet.get_mac_header().recipient_id}"
@@ -540,7 +550,8 @@ class BanMac:
                 sim_time=self.get_env().now,
                 msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: TX packet is None or "
                     + f"current mode is ACK_PENDING, "
-                    + f"I will go into IDLE mode."
+                    + f"I will go into IDLE mode.",
+                level=logging.WARN
             )
             self.set_mac_state(BanMacState.MAC_IDLE)
             return
@@ -650,18 +661,19 @@ class BanMac:
 
 
     def ack_wait_timeout(self, event: simpy.Environment):
-        BanMac.logger.log(
-            sim_time=self.get_env().now,
-            level=logging.WARN,
-            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}]: "
-            + f"ACK timed out, dropping TX packet."
-        )
         # Check whether this timeout is called for previous tx packet or called for current tx packet
         if self.__prev_tx_status is True:
             self.__prev_tx_status = False   # this flag will be turned on when the node receives a corresponding Ack
             return
 
         if self.__mac_state == BanMacState.MAC_ACK_PENDING:
+            BanMac.logger.log(
+                sim_time=self.get_env().now,
+                level=logging.WARN,
+                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}]: "
+                    + f"ACK timed out, dropping TX packet."
+            )
+
             # Simply drop the pending packet
             self.__tx_packet = None
             self.set_mac_state(BanMacState.MAC_IDLE)
@@ -694,8 +706,11 @@ class BanMac:
 
 
     def __get_ack_wait_duration(self):
-        return (self.get_phy().aTurnaroundTime + self.get_phy().get_phy_shr_duration() +
-                (math.ceil(6 * self.get_phy().get_phy_symbols_per_octet())))
+        return (
+                self.get_phy().aTurnaroundTime                                   # 모드 변경 소요 시간
+                + self.get_phy().get_phy_shr_duration()                          #
+                + (math.ceil(6 * self.get_phy().get_phy_symbols_per_octet()))    # 전송률(rate)
+        )
 
 
     def __change_mac_state(self, new_state: BanMacState):
