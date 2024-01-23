@@ -112,9 +112,8 @@ class BanSSCS:
             sim_time=self.get_env().now,
             msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] "
                 + f"MAC reported transaction result: {status.name}",
-            level=logging.INFO
+            level=logging.INFO,
         )
-        pass
 
     def data_indication(self, rx_packet: Packet):
         # print("data_indication: ", rx_packet.get_spectrum_tx_params().tx_power)
@@ -211,8 +210,8 @@ class BanSSCS:
         BanSSCS.logger.log(
             sim_time=self.get_env().now,
             msg=
-            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal...\n",
-            # newline="\n"
+            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal...",
+            newline="\n"
         )
 
         self.get_mac().set_mac_header(
@@ -247,7 +246,7 @@ class BanSSCS:
                 break
             tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
-        self.__mac.mlme_data_request(tx_packet)
+        self.get_mac().mlme_data_request(tx_packet)
 
         event = self.get_env().event()
         event._ok = True
@@ -258,7 +257,7 @@ class BanSSCS:
     def beacon_interval_timeout(self, event):
         BanSSCS.logger.log(
             sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.__tx_params.node_id}] beacon interval timeout triggered.",
+            msg=f"{self.__class__.__name__}[{self.__tx_params.node_id}] beacon signal interval timeout triggered.",
             level=logging.DEBUG
         )
         # # Calculate the next_state, reward, done
@@ -278,7 +277,7 @@ class BanSSCS:
         #             dqn_status.next_state = 0
         #             dqn_status.done = True
         #             dqn_status.steps = 0
-        pass
+
 
     def send_data(self, tx_packet: Packet):
         # print("send_data: ", tx_packet.get_spectrum_tx_params().tx_power)
@@ -287,7 +286,7 @@ class BanSSCS:
         tx_params.node_id = self.__tx_params.node_id
         tx_params.recipient_id = self.__tx_params.recipient_id
 
-        self.__mac.mcps_data_request(self.__tx_params, tx_packet)
+        self.get_mac().mcps_data_request(self.__tx_params, tx_packet)
 
     def get_data(self):
         return self.__packet_list

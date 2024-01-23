@@ -71,10 +71,10 @@ class BanPhyDataAndSymbolRates:
 
 
 @dataclass
-class BanPhyPpduHeaderSymbolNumber:
-    shr_preamble: float | None = None
-    shr_sfd: float | None = None
-    phr: float | None = None
+class BanPhyPpduHeaderSymbolNumber:         # PPDU: Physical layer Protocol Data Unit
+    shr_preamble: float | None = None       # Physical Layer Header: T_PHR
+    shr_sfd: float | None = None            # PSDU: T_PSDU
+    phr: float | None = None                # Synchronization header: T_SHR
 
 
 class BanPhy:
@@ -205,7 +205,12 @@ class BanPhy:
 
         self.get_mac().set_attribute_confirm(status, attribute_id)
 
-    def get_data_or_symbol_rate(self, is_data: bool):
+    def get_data_or_symbol_rate(self, is_data: bool) -> float:
+        """
+        returns rate of data or symbol in seconds
+        :param is_data: bool
+        :return: rate
+        """
         rate = 0.0
         if self.__phy_option == BanPhyOption.IEEE_802_15_6_INVALID_PHY_OPTION:
             raise Exception("Invalid PHY option detected.")
@@ -310,14 +315,14 @@ class BanPhy:
             tx_packet.set_spectrum_tx_params(spec_tx_params)
 
             # We have to previously forward the required parameter before we register the event of a function call
-            self.__channel.set_tx_packet(tx_packet)
+            self.get_channel().set_tx_packet(tx_packet)
 
             # update trace info
-            self.__mac.get_tracer().add_tx_packet(tx_packet)
+            self.get_mac().get_tracer().add_tx_packet(tx_packet)
 
             event = self.__env.event()
             event._ok = True
-            event.callbacks.append(self.__channel.start_tx)
+            event.callbacks.append(self.get_channel().start_tx)
             event.callbacks.append(self.end_tx)
             self.__env.schedule(event, priority=0, delay=tx_duration)
 
@@ -326,7 +331,7 @@ class BanPhy:
               self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF or
               self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_TX):
 
-            self.__mac.pd_data_confirm(self.__trx_state)
+            self.get_mac().pd_data_confirm(self.__trx_state)
 
     def end_tx(self, event):
         BanPhy.logger.log(
@@ -334,7 +339,7 @@ class BanPhy:
             msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] end_tx: END TX"
         )
         # If the transmission successes
-        self.__mac.pd_data_confirm(BanPhyTRxState.IEEE_802_15_6_PHY_SUCCESS)
+        self.get_mac().pd_data_confirm(BanPhyTRxState.IEEE_802_15_6_PHY_SUCCESS)
 
         # If the transmission aborted
         # self.change_trx_state(BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF)
@@ -348,7 +353,8 @@ class BanPhy:
         BanPhy.logger.log(
             sim_time=self.get_env().now,
             msg=
-            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] start_rx: START RX"
+            f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] start_rx: START RX",
+            newline="\n"
         )
 
         if self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_RX_ON:
@@ -401,15 +407,23 @@ class BanPhy:
         is_data = True
         tx_time = self.get_ppdu_header_tx_time()
 
+        # multiply 8.0 for convert bits to bytes
         tx_time += (tx_packet.get_size() * 8.0 / self.get_data_or_symbol_rate(is_data))  # seconds
+
         return tx_time
 
-    def get_ppdu_header_tx_time(self):
+    def get_ppdu_header_tx_time(self) -> float | None:
+        """
+        calculate total PPDU header TX time
+        :return:
+        """
         is_data = False
         if self.__phy_option != BanPhyOption.IEEE_802_15_6_INVALID_PHY_OPTION:
-            total_ppdu_hdr_symbols = (self.__ppdu_header_symbol_num[self.__phy_option.value].shr_preamble +
-                                      self.__ppdu_header_symbol_num[self.__phy_option.value].shr_sfd +
-                                      self.__ppdu_header_symbol_num[self.__phy_option.value].phr)
+            total_ppdu_hdr_symbols = (
+                self.__ppdu_header_symbol_num[self.__phy_option.value].shr_preamble +
+                self.__ppdu_header_symbol_num[self.__phy_option.value].shr_sfd +
+                self.__ppdu_header_symbol_num[self.__phy_option.value].phr
+            )
         else:
             print('fatal error: Invalid phy option')
             return None

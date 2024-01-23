@@ -81,4 +81,4 @@ event.callbacks.append(
 device.env.schedule(event, priority=0, delay=0.01)
 
 # Run simulation
-env.run(until=1)
+env.run(until=0.5)

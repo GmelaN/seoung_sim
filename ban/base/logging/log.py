@@ -9,16 +9,33 @@ class SeoungSimLogger:
         self.logger.setLevel(level)
         self.level = level
 
-        loggingHandler = logging.StreamHandler()
-        loggingHandler.setLevel(level)
+        self.loggingHandler = logging.StreamHandler()
+        self.loggingHandler.setLevel(level)
 
-        loggingHandler.setFormatter(
-            logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+        # self.default_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.default_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        self.newline_formatter = logging.Formatter(
+            '=' * 200
+            + '\n'
+            # + '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            + '%(name)s - %(levelname)s - %(message)s'
+            + '\n'
+            + '=' * 200
         )
 
-        self.logger.addHandler(loggingHandler)
+        self.loggingHandler.setFormatter(self.default_formatter)
+        self.logger.addHandler(self.loggingHandler)
 
-    def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = ""):
 
-        full_message = f"{newline}[SimTime: {sim_time:.10f}] {msg}"
+    def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
+        full_message = f"[SimTime: {sim_time:.10f}] {msg}"
+
+        if len(newline) != 0:
+            self.loggingHandler.setFormatter(self.newline_formatter)
+            self.logger.log(level=self.level if level is None else level, msg=full_message)
+            self.loggingHandler.setFormatter(self.default_formatter)
+
+            return
+
         self.logger.log(level=self.level if level is None else level, msg=full_message)

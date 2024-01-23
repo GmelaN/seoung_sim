@@ -14,6 +14,7 @@ from ban.base.channel.csma_ca import CsmaCa
 from ban.device.mac_header import BanFrameType, BanFrameSubType, BanMacHeader, Beacon, IAck, Data, BanRecipientType
 from ban.device.phy import BanPhyPibAttributes, BanPhy, BanPibAttributeIdentifier, BanPhyTRxState
 from ban.device.sscs import BanTxParams, BanSSCS, BanTxOption, BanDataConfirmStatus
+from ban.device.mac_header import BanRecipientType
 
 
 class BanMacState(Enum):
@@ -27,15 +28,15 @@ class BanMacState(Enum):
 
 
 class BanMac:
-    # MAC params specified in IEEE 802.15.6 standard
-    pAllocationSlotMin = 500    # us
-    pAllocationSlotResolution = 500    # us
-    pSIFS = 75  # us
-    pMIFS = 20  # us
-    pExtraIFS = 10  # us
-    mClockResolution = 4  # us
+    # MAC params specified in IEEE 802.15.6 standard 2012, 149p.
+    pAllocationSlotMin = 500            # us
+    pAllocationSlotResolution = 500     # us
+    pSIFS = 75                          # us
+    pMIFS = 20                          # us
+    pExtraIFS = 10                      # us
+    mClockResolution = 4                # us
     # A slot length can be calculated as pAllocationSlotMin + (L) * pAllocationSlotResolution = 1000 us (1 ms)
-    mAllocationSlotLength = 1  # ms
+    mAllocationSlotLength = 1           # ms
 
     logger = SeoungSimLogger(logger_name="BAN-MAC", level=logging.DEBUG)
 
@@ -153,8 +154,9 @@ class BanMac:
 
         BanMac.logger.log(
             sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] do_initialize: initialized.\n",
-            level=logging.INFO
+            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] do_initialize: initialized.",
+            level=logging.INFO,
+            newline="\n"
         )
 
 
@@ -167,24 +169,30 @@ class BanMac:
         event.callbacks.append(self.check_queue)
         self.__env.schedule(event, priority=0, delay=0)
 
+        recipient_id = tx_packet.get_mac_header().recipient_id
+        broadcast = "BROADCAST"
+
         BanMac.logger.log(
             sim_time=self.get_env().now,
             msg=
             f"{self.__class__.__name__}[{self.__mac_params.node_id}] mlme_data_request: processing MLME-DATA.request, "
             + f"packet size: {tx_packet.get_size()}, "
             + f"from : {tx_packet.get_mac_header().sender_id}, "
-            + f"to: {tx_packet.get_mac_header().recipient_id}."
+            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
         )
 
 
     def mcps_data_request(self, tx_params: BanTxParams, tx_packet: Packet):
+        recipient_id = tx_packet.get_mac_header().recipient_id
+        broadcast = "BROADCAST"
+
         BanMac.logger.log(
             sim_time=self.get_env().now,
             msg=
             f"{self.__class__.__name__}[{self.__mac_params.node_id}] mcps_data_request: receiving MCPS-DATA.request, "
             + f"packet size: {tx_packet.get_size()}, "
             + f"from : {self.__mac_params.node_id}, "
-            + f"to: {tx_params.recipient_id}."
+            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
         )
 
         tx_params.tx_option = BanTxOption.TX_OPTION_ACK
@@ -206,7 +214,6 @@ class BanMac:
 
         # Push the packet into the Tx queue
         self.__tx_queue.put_nowait(tx_packet)
-
         self.check_queue(self.get_env())
 
 
@@ -215,7 +222,8 @@ class BanMac:
         BanMac.logger.log(
             sim_time=self.get_env().now,
             msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] pd_data_confirm"
-                + f": processing PD-DATA.confirm, trx_state: {trx_state.name}"
+                + f": processing PD-DATA.confirm, trx_state: {trx_state.name}",
+            newline="\n"
         )
 
         if trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_SUCCESS:
@@ -244,7 +252,6 @@ class BanMac:
                 )
 
                 self.__ack_wait_time += (self.get_phy().calc_tx_time(self.__tx_packet) * 2)
-
                 self.__ack_wait_time += microseconds(self.get_phy().aTurnaroundTime) * 4
 
                 # ACK timeout 이벤트 등록
@@ -252,10 +259,11 @@ class BanMac:
                     sim_time=self.get_env().now,
                     msg=f"\tACK timeout at: {self.get_env().now + self.__ack_wait_time:.10f}"
                 )
+
                 event = self.__env.event()
                 event._ok = True
                 event.callbacks.append(self.ack_wait_timeout)
-                self.__env.schedule(event, priority=0, delay=self.__ack_wait_time)# + 0.002)
+                self.__env.schedule(event, priority=0, delay=self.__ack_wait_time)
 
             else:
                 # ACK 수신 대기를 할 필요가 없는 경우
@@ -291,6 +299,9 @@ class BanMac:
         assert rx_packet.get_mac_header().ban_id is not None
         assert self.__mac_params.node_id is not None
 
+        broadcast = "BROADCAST"
+        recipient_id = rx_packet.get_mac_header().recipient_id
+
         BanMac.logger.log(
             sim_time=self.get_env().now,
             msg=
@@ -298,7 +309,7 @@ class BanMac:
             + f" rx_packet size: {rx_packet.get_size()}, "
             + f"packet type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}, "
             + f"from: {rx_packet.get_mac_header().sender_id}, "
-            + f"to: {rx_packet.get_mac_header().recipient_id}"
+            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
         )
 
         rx_header: BanMacHeader = rx_packet.get_mac_header()
@@ -497,7 +508,8 @@ class BanMac:
                 sim_time=self.get_env().now,
                 msg=
                 f"{self.__class__.__name__}[{self.__mac_params.node_id}] set_trx_state_confirm: "
-                + f"packet frame type: {tx_frame_type.name}"
+                + f"packet frame type: {tx_frame_type.name}, "
+                + f"allocation time expires at: {self.__alloc_end_time:.10f}"
             )
 
             if tx_frame_type == BanFrameType.IEEE_802_15_6_MAC_CONTROL:
@@ -519,7 +531,10 @@ class BanMac:
                     else:
                         self.get_phy().set_trx_state_request(BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF)
 
-                    # print('Expected Tx time:', expected_tx_time, 'Remain alloc time:', remain_alloc_time)
+                    BanMac.logger.log(
+                        sim_time=self.get_env().now,
+                        msg=f"Expected Tx time: {expected_tx_time}, Remain alloc time: {remain_alloc_time}"
+                    )
                     return
 
             self.get_phy().pd_data_request(self.__tx_packet)
@@ -545,11 +560,21 @@ class BanMac:
             msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: starting TX"
         )
 
-        if self.__tx_packet is None or self.__mac_state == BanMacState.MAC_ACK_PENDING:
+        if self.__tx_packet is None:
             BanMac.logger.log(
                 sim_time=self.get_env().now,
-                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: TX packet is None or "
-                    + f"current mode is ACK_PENDING, "
+                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: TX packet is None - "
+                    + f"I will go into IDLE mode.",
+                level=logging.WARN
+            )
+            self.set_mac_state(BanMacState.MAC_IDLE)
+            return
+
+
+        if self.__mac_state == BanMacState.MAC_ACK_PENDING:
+            BanMac.logger.log(
+                sim_time=self.get_env().now,
+                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: current mode is ACK_PENDING, "
                     + f"I will go into IDLE mode.",
                 level=logging.WARN
             )
