@@ -31,7 +31,7 @@ class Node:
         return self.m_phy
 
     def get_channel(self) -> Channel:
-        if self.m_phy == None:
+        if self.m_phy is None:
             raise Exception("you must set PHY device first.")
         return self.m_phy.get_channel()
 

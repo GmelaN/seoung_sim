@@ -184,6 +184,8 @@ class BanMac:
 
     def mcps_data_request(self, tx_params: BanTxParams, tx_packet: Packet):
         recipient_id = tx_packet.get_mac_header().recipient_id
+        assert recipient_id is not None
+
         broadcast = "BROADCAST"
 
         BanMac.logger.log(
@@ -252,7 +254,7 @@ class BanMac:
                 )
 
                 self.__ack_wait_time += (self.get_phy().calc_tx_time(self.__tx_packet) * 2)
-                self.__ack_wait_time += microseconds(self.get_phy().aTurnaroundTime) * 4
+                self.__ack_wait_time += microseconds(self.get_phy().aTurnaroundTime) * 2 * 2
 
                 # ACK timeout 이벤트 등록
                 BanMac.logger.log(

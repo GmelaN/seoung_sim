@@ -10,6 +10,7 @@ from ban.base.helper.mobility_helper import MobilityHelper
 from ban.base.mobility import BodyPosition, MobilityModel
 from ban.base.packet import Packet
 from ban.device.mac import BanMac
+from ban.device.mac_header import BanMacHeader
 from ban.device.node import NodeBuilder, Node
 from ban.device.phy import BanPhy
 from ban.device.sscs import BanTxParams, BanSSCS
@@ -73,6 +74,10 @@ ev.callbacks.append(agent.m_sscs.send_beacon)
 agent.env.schedule(ev, priority=0, delay=0)
 
 packet: Packet = Packet(packet_size=10)
+mac_header = BanMacHeader()
+mac_header.set_tx_params(ban_id=0, sender_id=1, recipient_id=0)
+
+packet.set_mac_header_(mac_header=mac_header)
 
 event = device.env.event()
 event._ok = True

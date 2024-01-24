@@ -403,7 +403,12 @@ class BanPhy:
         if self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_RX:
             self.change_trx_state(BanPhyTRxState.IEEE_802_15_6_PHY_RX_ON)
 
-    def calc_tx_time(self, tx_packet: Packet):
+    def calc_tx_time(self, tx_packet: Packet) -> float:
+        """
+        calculate total packet TX time(including PPDU header)
+        :param tx_packet: Packet
+        :return:
+        """
         is_data = True
         tx_time = self.get_ppdu_header_tx_time()
 
