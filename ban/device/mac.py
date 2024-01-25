@@ -716,7 +716,7 @@ class BanMac:
 
 
     def show_result(self, event:simpy.Environment):
-        print('Performance results (NID: %d)' % self.__mac_params.node_id)
+        print('Performance results (NID: %d)' % self.get_mac_params().node_id)
         print('Packet delivery ratio:', round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100, '%')
         print('Throughput:', round(self.get_tracer().get_throughput() / 1000, 3), 'kbps')
         print('Energy consumption ratio:', round(self.get_tracer().get_energy_consumption_ratio(), 3), '%', '\n')

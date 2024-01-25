@@ -198,7 +198,6 @@ class DQNTrainer:
 
     def get_action(self, current_state):
         if self.current_episode > self.episodes:
-            # print('All the training episodes end: return the best action')
             action = np.argmax(self.get_q_values(np.array([current_state])))
             return action
 

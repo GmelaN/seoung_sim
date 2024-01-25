@@ -24,7 +24,7 @@ class Tracer:
         self.tx_packet.clear()
         self.success_tx_packet.clear()
         self.success_tx_bit = 0
-        self.consume_energy = 0
+        self.consume_energy: float = 0.0
         self.reset_time = self.env.now
 
     def add_tx_packet(self, packet: Packet):
