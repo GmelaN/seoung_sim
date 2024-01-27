@@ -1,6 +1,8 @@
 import logging
 from enum import Enum
 import sys
+
+import simpy
 from attr import dataclass
 
 from ban.base.dqn.dqn_trainer import DQNTrainer
@@ -78,7 +80,7 @@ class BanSSCS:
     def set_env(self, env):
         self.__env = env
 
-    def get_env(self):
+    def get_env(self) -> simpy.Environment:
         return self.__env
 
     def set_dqn_trainer(self, dqn_trainer):

@@ -367,10 +367,10 @@ class BanPhy:
                 self.__rx_pkt.success = False
             # print('Rx power (dBm):', self.__rx_pkt.get_spectrum_tx_params().tx_power + self.__noise)
         elif self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_RX:
-            print('Packet collision at (NID:%d)' % self.__mac.__mac_params.node_id, self.__trx_state)
+            # print('Packet collision at (NID:%d)' % self.__mac.__mac_params.node_id, self.__trx_state)
             self.__rx_pkt.success = False
         else:
-            print('Transceiver not in Rx state:', self.__trx_state)
+            # print('Transceiver not in Rx state:', self.__trx_state)
             self.__rx_pkt.success = False
 
         # Update peak power if CCA is in progress

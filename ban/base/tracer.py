@@ -12,6 +12,7 @@ class Tracer:
         self.consume_energy = 0  # watt
         self.initial_energy = None
         self.reset_time = None
+        self.transaction_count = 0
 
     def set_env(self, env):
         self.env = env
@@ -28,6 +29,7 @@ class Tracer:
         self.reset_time = self.env.now
 
     def add_tx_packet(self, packet: Packet):
+        self.transaction_count += 1
         # print("DEBUG: add_tx_packet", packet.get_spectrum_tx_params().tx_power)
         self.tx_packet.append(packet)
         tx_power = packet.get_spectrum_tx_params().tx_power
@@ -35,6 +37,10 @@ class Tracer:
 
     def add_success_tx_packet(self, packet: Packet):
         # print("DEBUG: add_success_tx_packet", packet.get_spectrum_tx_params().tx_power)
+
+        # TODO: tx_packet / success_tx_packet이 패킷 전송률을 구하는 게 맞는지
+        self.add_tx_packet(packet)
+
         self.success_tx_packet.append(packet)
         self.success_tx_bit += packet.get_size() * 8
 
@@ -68,3 +74,7 @@ class Tracer:
             return 0
 
         return len(self.success_tx_packet) / len(self.tx_packet)
+
+
+    def get_transaction_count(self):
+        return self.transaction_count

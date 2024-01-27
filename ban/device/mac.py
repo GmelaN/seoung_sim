@@ -63,6 +63,7 @@ class BanMac:
         self.__initial_energy = 1
 
 
+
     def set_env(self, env: simpy.Environment):
         self.__env = env
 
@@ -183,20 +184,6 @@ class BanMac:
 
 
     def mcps_data_request(self, tx_params: BanTxParams, tx_packet: Packet):
-        recipient_id = tx_packet.get_mac_header().recipient_id
-        assert recipient_id is not None
-
-        broadcast = "BROADCAST"
-
-        BanMac.logger.log(
-            sim_time=self.get_env().now,
-            msg=
-            f"{self.__class__.__name__}[{self.__mac_params.node_id}] mcps_data_request: receiving MCPS-DATA.request, "
-            + f"packet size: {tx_packet.get_size()}, "
-            + f"from : {self.__mac_params.node_id}, "
-            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
-        )
-
         tx_params.tx_option = BanTxOption.TX_OPTION_ACK
         tx_params.seq_num = self.__seq_num
         self.__seq_num += 1
@@ -212,6 +199,20 @@ class BanMac:
             tx_params=tx_params,
             frame_type=BanFrameType.IEEE_802_15_6_MAC_DATA,
             frame_subtype=BanFrameSubType.WBAN_DATA_UP0
+        )
+
+        recipient_id = tx_packet.get_mac_header().recipient_id
+        assert recipient_id is not None
+
+        broadcast = "BROADCAST"
+
+        BanMac.logger.log(
+            sim_time=self.get_env().now,
+            msg=
+            f"{self.__class__.__name__}[{self.__mac_params.node_id}] mcps_data_request: receiving MCPS-DATA.request, "
+            + f"packet size: {tx_packet.get_size()}, "
+            + f"from : {self.__mac_params.node_id}, "
+            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
         )
 
         # Push the packet into the Tx queue
@@ -473,7 +474,10 @@ class BanMac:
                     self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_COUNTER_ERROR)
 
         else:
-            print("error")
+            # TODO: 검증
+            # accept_frame = False -> return
+            return
+            # print("error")
 
 
     # Callback function (called from PHY)
@@ -716,16 +720,18 @@ class BanMac:
 
 
     def show_result(self, event:simpy.Environment):
+        print("time:", self.get_env().now)
+        print("transactions:", self.get_tracer().get_transaction_count())
         print('Performance results (NID: %d)' % self.get_mac_params().node_id)
         print('Packet delivery ratio:', round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100, '%')
         print('Throughput:', round(self.get_tracer().get_throughput() / 1000, 3), 'kbps')
         print('Energy consumption ratio:', round(self.get_tracer().get_energy_consumption_ratio(), 3), '%', '\n')
 
-        self.get_tracer().reset()
-        event = self.__env.event()
-        event._ok = True
-        event.callbacks.append(self.show_result)
-        self.__env.schedule(event, priority=0, delay=200)
+        # self.get_tracer().reset()
+        # event = self.__env.event()
+        # event._ok = True
+        # event.callbacks.append(self.show_result)
+        # self.__env.schedule(event, priority=0, delay=1)
 
 
     def plme_cca_confirm(self, status: BanPhyTRxState):

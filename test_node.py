@@ -17,7 +17,6 @@ from ban.device.phy import BanPhy
 from ban.device.sscs import BanTxParams, BanSSCS
 
 
-
 def send_data(device: Node, delay: float):
     packet: Packet = Packet(packet_size=10)
     mac_header = BanMacHeader()
@@ -30,15 +29,19 @@ def send_data(device: Node, delay: float):
     event.callbacks.append(
         lambda _: device.m_sscs.send_data(tx_packet=packet)
     )
-    device.env.schedule(event, priority=0, delay=delay)
 
+    event.callbacks.append(
+        lambda _: device.get_mac().show_result(env)
+    )
+
+    device.env.schedule(event, priority=0, delay=delay)
 
 
 # Test start
 env = simpy.Environment()  # Create the SimPy environment
 
 # channel
-channel = Channel()      # All nodes share a channel environment
+channel = Channel()  # All nodes share a channel environment
 channel.set_env(env)
 prop_loss_model = PropLossModel()
 prop_loss_model.set_frequency(0.915e9)  # We assume the wireless channel operates in 915 Mhz
@@ -53,14 +56,14 @@ banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
 banSSCS.get_dqn_trainer().set_env(env)
 
 device = NodeBuilder() \
-.set_device_params(BanTxParams(ban_id=0, node_id=1, recipient_id=0)) \
-.set_mac(BanMac()) \
-.set_phy(BanPhy()) \
-.set_sscs(BanSSCS()) \
-.set_csma_ca(CsmaCa()) \
-.set_channel(channel) \
-.set_env(env) \
-.build()
+    .set_device_params(BanTxParams(ban_id=0, node_id=1, recipient_id=0)) \
+    .set_mac(BanMac()) \
+    .set_phy(BanPhy()) \
+    .set_sscs(BanSSCS()) \
+    .set_csma_ca(CsmaCa()) \
+    .set_channel(channel) \
+    .set_env(env) \
+    .build()
 
 mob_n1 = MobilityModel(BodyPosition.LEFT_ELBOW)
 device.get_phy().set_mobility(mob_n1)
@@ -68,14 +71,14 @@ device.get_phy().set_mobility(mob_n1)
 # n2.get_mac().set_mac_params(BanTxParams(ban_id=0, node_id=1, recipient_id=10))
 
 agent = NodeBuilder() \
-.set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \
-.set_mac(BanMac()) \
-.set_phy(BanPhy()) \
-.set_csma_ca(CsmaCa()) \
-.set_sscs(banSSCS) \
-.set_channel(channel) \
-.set_env(env) \
-.build()
+    .set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \
+    .set_mac(BanMac()) \
+    .set_phy(BanPhy()) \
+    .set_csma_ca(CsmaCa()) \
+    .set_sscs(banSSCS) \
+    .set_channel(channel) \
+    .set_env(env) \
+    .build()
 
 mob_agent = MobilityModel(BodyPosition.RIGHT_LOWER_TORSO)
 agent.get_phy().set_mobility(mob_agent)
@@ -114,4 +117,4 @@ event.callbacks.append(device.get_mac().show_result)
 env.schedule(event, priority=0, delay=0.01)
 
 # Run simulation
-env.run(until=200.1)
+env.run(until=20000.1)

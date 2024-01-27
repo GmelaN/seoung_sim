@@ -20,13 +20,13 @@ class DQNTrainer:
         self.data_list = list()
 
         # DQN parameters
-        self.episodes = 500
+        self.episodes = 1000
         self.epsilon = 1.0
         self.min_epsilon = 0.1
         self.exploration_ratio = 0.5
         self.max_steps = 300
         self.save_dir = 'checkpoints'
-        self.enable_save = True
+        self.enable_save = False
         self.render_freq = 500
         self.enable_render = True
         self.render_fps = 20
@@ -171,7 +171,7 @@ class DQNTrainer:
         os.environ['PYTHONHASHSEED'] = str(seed)
         tf.random.set_seed(seed)
 
-    def set_observation(self, current_state, current_action, next_state, reward, steps, done):
+    def set_observation(self, current_state, current_action, next_state, reward, steps, done) -> bool:
         if self.current_episode > self.episodes:
             # print('All the training episodes end: do nothing')
             return True

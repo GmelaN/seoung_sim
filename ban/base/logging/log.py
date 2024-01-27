@@ -29,13 +29,14 @@ class SeoungSimLogger:
 
 
     def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
+        return
         full_message = f"[SimTime: {sim_time:.10f}] {msg}"
 
         if len(newline) != 0:
-            self.loggingHandler.setFormatter(self.newline_formatter)
-            self.logger.log(level=self.level if level is None else level, msg=full_message)
-            self.loggingHandler.setFormatter(self.default_formatter)
+            # self.loggingHandler.setFormatter(self.newline_formatter)
+            # self.logger.log(level=self.level if level is None else level, msg=full_message)
+            # self.loggingHandler.setFormatter(self.default_formatter)
 
             return
 
-        self.logger.log(level=self.level if level is None else level, msg=full_message)
+        # self.logger.log(level=self.level if level is None else level, msg=full_message)

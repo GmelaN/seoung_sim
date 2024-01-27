@@ -5,6 +5,7 @@ import simpy
 from ban.base.channel.channel import Channel
 from ban.base.packet import Packet
 from ban.device.mac import BanMac
+from ban.device.mac_header import BanMacHeader
 from ban.device.phy import BanPhy
 from ban.device.sscs import BanTxParams, BanSSCS
 
@@ -38,16 +39,16 @@ class Node:
     def generate_data(self, event):
         # TODO: Generate a data packet based on a node's sampling rate
         self.m_tx_pkt = Packet(500)
-        self.m_sscs.send_data(self.m_tx_pkt)
+        mac_header = BanMacHeader()
+        mac_header.set_tx_params(self.m_tx_params.ban_id, self.m_tx_params.node_id, self.m_tx_params.recipient_id)
+        self.m_tx_pkt.set_mac_header_(mac_header=mac_header)
 
-        Node.logger.debug(
-            f"node[{self.get_mac().get_mac_params().node_id}]: "
-            + f"I generated data packet"
-        )
+        self.m_sscs.send_data(self.m_tx_pkt)
 
         ev = self.env.event()
         ev._ok = True
         ev.callbacks.append(self.generate_data)
+        ev.callbacks.append(lambda _: self.get_mac().show_result(ev))
         self.env.schedule(ev, priority=0, delay=0.1)
 
 
