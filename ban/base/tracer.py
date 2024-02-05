@@ -36,9 +36,7 @@ class Tracer:
         self.add_consumed_energy(tx_power)
 
     def add_success_tx_packet(self, packet: Packet):
-        # print("DEBUG: add_success_tx_packet", packet.get_spectrum_tx_params().tx_power)
-
-        # TODO: tx_packet / success_tx_packet이 패킷 전송률을 구하는 게 맞는지
+        # TODO: tx_packet / success_tx_packet이 패킷 전송률을 구하는게 맞는지
         self.add_tx_packet(packet)
 
         self.success_tx_packet.append(packet)
@@ -47,6 +45,8 @@ class Tracer:
     def get_throughput(self):
         if self.env is None:
             print('simpy.env was not initialized')
+            return -1
+        if self.env.now - self.reset_time == 0:
             return -1
         return self.success_tx_bit / (self.env.now - self.reset_time)
 

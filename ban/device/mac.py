@@ -4,6 +4,7 @@ from queue import Queue
 from enum import Enum
 
 import simpy
+import tqdm
 from simpy.core import SimTime
 
 from ban.base.logging.log import SeoungSimLogger
@@ -719,19 +720,29 @@ class BanMac:
         pass
 
 
-    def show_result(self, event:simpy.Environment):
-        print("time:", self.get_env().now)
-        print("transactions:", self.get_tracer().get_transaction_count())
-        print('Performance results (NID: %d)' % self.get_mac_params().node_id)
-        print('Packet delivery ratio:', round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100, '%')
-        print('Throughput:', round(self.get_tracer().get_throughput() / 1000, 3), 'kbps')
-        print('Energy consumption ratio:', round(self.get_tracer().get_energy_consumption_ratio(), 3), '%', '\n')
+    def show_result(self, pbar: tqdm.tqdm | None = None, event:simpy.Environment | None = None, delay_interval: int = 1):
+        if pbar is None:
+            print(
+                f"{self.get_mac_params().node_id}\n",
+                f'{round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\n',
+                f"{round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\n",
+                f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
+            )
+        else:
+            pbar.set_postfix(
+                node_id = f"{self.get_mac_params().node_id}",
+                packet_delivery_ratio = f'{round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%',
+                throughput = f"{round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps",
+                energy_consumption_ratio = f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
+            )
 
-        # self.get_tracer().reset()
-        # event = self.__env.event()
-        # event._ok = True
-        # event.callbacks.append(self.show_result)
-        # self.__env.schedule(event, priority=0, delay=1)
+        self.get_tracer().reset()
+        event = self.get_env().event()
+        event._ok = True
+        event.callbacks.append(
+            lambda _: self.show_result(pbar=pbar, delay_interval=delay_interval)
+        )
+        self.get_env().schedule(event, priority=0, delay=delay_interval)
 
 
     def plme_cca_confirm(self, status: BanPhyTRxState):

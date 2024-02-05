@@ -3,6 +3,7 @@ import logging
 import simpy
 
 from ban.base.channel.channel import Channel
+from ban.base.channel.csma_ca import CsmaCa
 from ban.base.packet import Packet
 from ban.device.mac import BanMac
 from ban.device.mac_header import BanMacHeader
@@ -55,6 +56,10 @@ class Node:
 class NodeBuilder:
     def __init__(self):
         self.node = Node()
+        self.set_mac(BanMac())
+        self.set_phy(BanPhy())
+        self.set_csma_ca(CsmaCa())
+        self.set_sscs(BanSSCS())
 
     def set_env(self, env):
         self.node.env = env

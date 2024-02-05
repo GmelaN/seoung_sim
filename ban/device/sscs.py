@@ -3,6 +3,7 @@ from enum import Enum
 import sys
 
 import simpy
+import tqdm
 from attr import dataclass
 
 from ban.base.dqn.dqn_trainer import DQNTrainer
@@ -83,8 +84,9 @@ class BanSSCS:
     def get_env(self) -> simpy.Environment:
         return self.__env
 
-    def set_dqn_trainer(self, dqn_trainer):
+    def set_dqn_trainer(self, dqn_trainer: DQNTrainer):
         self.__dqn_trainer = dqn_trainer
+        dqn_trainer.env = self.get_env()
 
     def get_dqn_trainer(self) -> DQNTrainer:
         if self.__dqn_trainer is None:
@@ -221,7 +223,7 @@ class BanSSCS:
 
         self.__packet_list.append(rx_packet)
 
-    def send_beacon(self, event):
+    def send_beacon(self, event, pbar: tqdm.tqdm | None = None):
         tx_packet = Packet(10)
         tx_params = BanTxParams()
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
@@ -243,6 +245,9 @@ class BanSSCS:
             newline="\n"
         )
 
+        if pbar is not None:
+            pbar.update(1)
+
         self.get_mac().set_mac_header(
             packet=tx_packet,
             tx_params=tx_params,
@@ -255,6 +260,7 @@ class BanSSCS:
         num_slot = 20  # for test. the number of allocation slots
 
         if self.use_dqn_features:
+            # print("sending beacon signal...")
             for n_index in self.__node_list:
                 # get the action from DQN trainer
                 for dqn_status in self.dqn_status_info:
@@ -271,7 +277,6 @@ class BanSSCS:
             assigned_link.interval_start = start_offset
             assigned_link.interval_end = num_slot
             assigned_link.tx_power = self.__tx_power  # get the tx power (action) from the DQN
-            # assigned_link.tx_power = -80  # get the tx power (action) from the DQN
             start_offset += (num_slot + 1)
 
             if start_offset > beacon_length:
@@ -284,8 +289,11 @@ class BanSSCS:
         event = self.get_env().event()
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
-        event.callbacks.append(self.send_beacon)
+        # event.callbacks.append(self.send_beacon)
+        event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
         self.get_env().schedule(event, priority=0, delay=self.__beacon_interval)
+
+
 
     def beacon_interval_timeout(self, event):
         BanSSCS.logger.log(

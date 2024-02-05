@@ -55,7 +55,14 @@ class DQNTrainer:
         self.current_episode = 0
 
         self.epsilon_decay = (self.epsilon - self.min_epsilon) / (self.exploration_ratio * self.episodes)
-        self.pbar = tqdm(initial=self.current_episode, total=self.episodes, unit='episodes')
+        self.pbar = tqdm(
+            initial=self.current_episode,
+            total=self.episodes,
+            unit='episodes',
+            position=0,
+            desc="TRAIN STATUS",
+            leave=True
+        )
 
     def _create_model(self):
         # Create a neural network using Sequential model
@@ -177,7 +184,6 @@ class DQNTrainer:
             return True
 
         self.update_replay_memory(current_state, current_action, reward, next_state, done)
-        self.train()
 
         if done is True or steps > self.max_steps:
             self.current_episode += 1
