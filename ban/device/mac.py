@@ -720,14 +720,16 @@ class BanMac:
         pass
 
 
-    def show_result(self, pbar: tqdm.tqdm | None = None, event:simpy.Environment | None = None, delay_interval: int = 1):
+    def show_result(self, event:simpy.Environment | None = None, pbar: tqdm.tqdm | None = None, delay_interval: int = 1):
         if pbar is None:
-            print(
-                f"{self.get_mac_params().node_id}\n",
-                f'{round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\n',
-                f"{round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\n",
-                f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
+            output = (
+                f"NODE ID: {self.get_mac_params().node_id}\t"
+                f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\t'
+                f"THROUGHPUT: {round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\t"
+                f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
             )
+            print(output + " " * (80 - len(output)), end='\r')
+
         else:
             pbar.set_postfix(
                 node_id = f"{self.get_mac_params().node_id}",
@@ -736,7 +738,7 @@ class BanMac:
                 energy_consumption_ratio = f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
             )
 
-        self.get_tracer().reset()
+        # self.get_tracer().reset()
         event = self.get_env().event()
         event._ok = True
         event.callbacks.append(

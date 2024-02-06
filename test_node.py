@@ -19,26 +19,6 @@ SIM_TIME = 1000
 show_result_delay_interval = 50
 pbar = tqdm.tqdm(total=(int(SIM_TIME) * 1000) // 255, leave=True, position=0)
 
-def send_data(device: Node, delay: float):
-    packet: Packet = Packet(packet_size=10)
-    mac_header = BanMacHeader()
-    mac_header.set_tx_params(ban_id=0, sender_id=1, recipient_id=0)
-
-    packet.set_mac_header_(mac_header=mac_header)
-
-    event = device.env.event()
-    event._ok = True
-
-    event.callbacks.append(
-        lambda _: device.m_sscs.send_data(tx_packet=packet)
-    )
-
-    event.callbacks.append(
-        lambda _: device.get_mac().show_result(pbar=pbar, delay_interval=show_result_delay_interval)
-    )
-
-    device.env.schedule(event, priority=0, delay=delay)
-
 
 # Test start
 env = simpy.Environment()  # Create the SimPy environment
@@ -66,9 +46,9 @@ device.get_phy().set_mobility(mob_n1)
 # DQN-enabled SSCS
 banSSCS = BanSSCS()
 banSSCS.set_env(env)
-banSSCS.use_dqn()
-banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
-banSSCS.get_dqn_trainer().set_env(env)
+# banSSCS.use_dqn()
+# banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
+# banSSCS.get_dqn_trainer().set_env(env)
 
 agent = NodeBuilder() \
     .set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \
@@ -101,10 +81,26 @@ packet.set_mac_header_(mac_header=mac_header)
 ev = env.event()
 ev._ok = True
 ev.callbacks.append(mobility_helper.do_walking)
-env.schedule(ev, priority=0, delay=1)
+env.schedule(ev, priority=0, delay=0)
 
-for i in range(1, int(SIM_TIME) + 1, show_result_delay_interval):
-    send_data(device, delay=i - 0.01)
+packet: Packet = Packet(packet_size=10)
+mac_header = BanMacHeader()
+mac_header.set_tx_params(ban_id=0, sender_id=1, recipient_id=0)
+
+packet.set_mac_header_(mac_header=mac_header)
+
+event = device.env.event()
+event._ok = True
+
+event.callbacks.append(
+    lambda _: device.m_sscs.send_data(tx_packet=packet)
+)
+
+# event.callbacks.append(
+#     lambda _: device.get_mac().show_result(pbar=pbar, delay_interval=show_result_delay_interval)
+# )
+
+device.env.schedule(event, priority=0, delay=0.1)
 
 # event = env.event()
 # event._ok = True

@@ -187,7 +187,7 @@ def start(event, node: Node = agent):
     ev = node.env.event()
     ev._ok = True
     ev.callbacks.append(node.m_sscs.send_beacon)
-    node.env.schedule(ev, priority=0, delay=0.01)
+    node.env.schedule(ev, priority=0, delay=0)
 
 
 
@@ -204,12 +204,7 @@ def send_data(device: Node, delay: float):
         lambda _: device.m_sscs.send_data(tx_packet=packet)
     )
 
-    event.callbacks.append(
-        lambda _: device.get_mac().show_result(env)
-    )
-
     device.env.schedule(event, priority=0, delay=delay)
-
 
 
 # Generate events (generate packet events)
@@ -226,17 +221,15 @@ event.callbacks.append(start)
 # event.callbacks.append(n8.generate_data)
 env.schedule(event, priority=NORMAL, delay=0.1)
 
-for i in range(1, 50 + 1):
-    delay = i * 0.1
-    send_data(n1, delay)
-    send_data(n2, delay)
-    send_data(n3, delay)
-    send_data(n4, delay)
-    send_data(n5, delay)
-    send_data(n6, delay)
-    send_data(n7, delay)
-    send_data(n8, delay)
-
+delay = 0.1
+send_data(n1, delay)
+send_data(n2, delay)
+send_data(n3, delay)
+send_data(n4, delay)
+send_data(n5, delay)
+send_data(n6, delay)
+send_data(n7, delay)
+send_data(n8, delay)
 
 
 # Generate events (generate mobility)
@@ -247,20 +240,20 @@ event.callbacks.append(mobility_helper.do_walking)
 env.schedule(event, priority=NORMAL, delay=0)
 
 # Set the simulation run time
-run_time = 50  # seconds
+run_time = 500  # seconds
 
 # Print statistical results
-# event = env.event()
-# event._ok = True
-# event.callbacks.append(n1.m_mac.show_result)
-# event.callbacks.append(n2.m_mac.show_result)
-# event.callbacks.append(n3.m_mac.show_result)
-# event.callbacks.append(n4.m_mac.show_result)
-# event.callbacks.append(n5.m_mac.show_result)
-# event.callbacks.append(n6.m_mac.show_result)
-# event.callbacks.append(n7.m_mac.show_result)
-# event.callbacks.append(n8.m_mac.show_result)
-# env.schedule(event, priority=NORMAL, delay=1)
+event = env.event()
+event._ok = True
+event.callbacks.append(n1.m_mac.show_result)
+event.callbacks.append(n2.m_mac.show_result)
+event.callbacks.append(n3.m_mac.show_result)
+event.callbacks.append(n4.m_mac.show_result)
+event.callbacks.append(n5.m_mac.show_result)
+event.callbacks.append(n6.m_mac.show_result)
+event.callbacks.append(n7.m_mac.show_result)
+event.callbacks.append(n8.m_mac.show_result)
+env.schedule(event, priority=NORMAL, delay=1)
 
 # Run simulation
 env.run(until=run_time)

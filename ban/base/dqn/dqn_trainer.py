@@ -20,7 +20,7 @@ class DQNTrainer:
         self.data_list = list()
 
         # DQN parameters
-        self.episodes = 1000
+        self.episodes = 2000
         self.epsilon = 1.0
         self.min_epsilon = 0.1
         self.exploration_ratio = 0.5

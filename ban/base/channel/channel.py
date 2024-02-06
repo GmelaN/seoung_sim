@@ -21,7 +21,6 @@ class Channel:
         self.__tx_packet: Packet = None
         self.__phy_list = list()  # send a data packet to all the registered phy modules
 
-
     def add_phy_list(self, phy):
         self.__phy_list.append(phy)
 
@@ -49,6 +48,7 @@ class Channel:
             + f"from: {self.__tx_packet.get_mac_header().sender_id}, "
             + f"to: {self.__tx_packet.get_mac_header().recipient_id}, "
         )
+
         # 필요한 멤버가 정의되어 있는지 검사
         if self.__tx_packet is None:
             raise Exception("Packet is not defined.")

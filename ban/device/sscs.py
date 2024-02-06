@@ -333,5 +333,12 @@ class BanSSCS:
 
         self.get_mac().mcps_data_request(self.__tx_params, tx_packet)
 
+        event = self.get_env().event()
+        event._ok = True
+        event.callbacks.append(
+            lambda _: self.send_data(tx_packet=tx_packet)
+        )
+        self.get_env().schedule(event, priority=0, delay=0.1)
+
     def get_data(self):
         return self.__packet_list
