@@ -4,7 +4,7 @@ import sys
 
 import simpy
 import tqdm
-from attr import dataclass
+from dataclasses import dataclass
 
 from ban.base.dqn.dqn_trainer import DQNTrainer
 from ban.base.logging.log import SeoungSimLogger
@@ -260,7 +260,6 @@ class BanSSCS:
         num_slot = 20  # for test. the number of allocation slots
 
         if self.use_dqn_features:
-            # print("sending beacon signal...")
             for n_index in self.__node_list:
                 # get the action from DQN trainer
                 for dqn_status in self.dqn_status_info:

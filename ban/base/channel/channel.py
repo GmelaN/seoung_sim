@@ -10,7 +10,6 @@ from ban.base.packet import Packet
 class Channel:
     logger = SeoungSimLogger(logger_name="CHANNEL", level=logging.DEBUG)
 
-    # TODO: builder 패턴 적용
     def __init__(self):
         self.__env = None
         self.__loss_model: LossModel = None

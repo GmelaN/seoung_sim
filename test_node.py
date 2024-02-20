@@ -15,7 +15,7 @@ from ban.device.node import NodeBuilder, Node
 from ban.device.sscs import BanTxParams, BanSSCS
 
 
-SIM_TIME = 1000
+SIM_TIME = 10000
 show_result_delay_interval = 50
 pbar = tqdm.tqdm(total=(int(SIM_TIME) * 1000) // 255, leave=True, position=0)
 
@@ -46,9 +46,9 @@ device.get_phy().set_mobility(mob_n1)
 # DQN-enabled SSCS
 banSSCS = BanSSCS()
 banSSCS.set_env(env)
-# banSSCS.use_dqn()
-# banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
-# banSSCS.get_dqn_trainer().set_env(env)
+banSSCS.use_dqn()
+banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
+banSSCS.get_dqn_trainer().set_env(env)
 
 agent = NodeBuilder() \
     .set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \
