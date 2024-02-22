@@ -6,13 +6,16 @@ import simpy
 import tqdm
 from dataclasses import dataclass
 
-from ban.base.dqn.dqn_trainer import DQNTrainer
+# from ban.base.dqn.dqn_trainer import DQNTrainer
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 from ban.base.utils import milliseconds
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
 
 from typing import List
+
+import numpy as np
+
 
 class BanTxOption(Enum):
     TX_OPTION_NONE = 0
@@ -63,47 +66,59 @@ class BanSSCS:
     ACTION_SET = [- 25, -24, -23, -22, -21, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2]    # dBm
 
     def __init__(self):
-        self.__env = None
-        self.__packet_list = list()
-        self.__mac = None   # To interact with a MAC layer
-        self.__node_list = list()
-        self.__tx_params = BanTxParams()
-        self.__beacon_interval = milliseconds(255)  # ms
-        self.__tx_power = 0   # dBm
+        self.env: simpy.Environment | None = None
+        self.packet_list: list = list()
+        self.mac: None = None   # To interact with a MAC layer
+        self.node_list: list = list()
+        self.tx_params: BanTxParams = BanTxParams()
+        self.beacon_interval: float = milliseconds(255)  # ms
+        self.tx_power: float = 0   # dBm
 
         # DQN feature
         self.dqn_status_info: List[DqnStatusInfo] = list()
-        self.__dqn_trainer = None  # To interact with a dqn_trainer
-        self.use_dqn_features = False
+        self.dqn_trainer: None = None  # To interact with a dqn_trainer
+        self.use_dqn_features: bool = False
 
-        self.__logger = logging.getLogger("BAN-SSCS")
+        self.logger = logging.getLogger("BAN-SSCS")
+
+
+
+        # Q-learning
+        self.ENVIRONMENT = (
+            (0, 1, 2),
+            (0, 2, 1),
+            (1, 0, 2),
+            (1, 2, 0),
+            (2, 0, 1),
+            (2, 1, 0),
+        )
+        self.ACTIONS = tuple(i for i in range(len(self.ENVIRONMENT)))
+        self.rewards = [[0 for _ in range(len(self.ENVIRONMENT))] for _ in range(len(self.ENVIRONMENT))]
+        self.q_table = [[0 for _ in range(len(self.ACTIONS))] for _ in range(len(self.ENVIRONMENT))]
+
+        self.gamma = 0.9
+        self.alpha = 0.75
+
+        self.current_state = 0
+        self.current_reward = 0
+
+
 
     def set_env(self, env):
-        self.__env = env
+        self.env = env
 
-    def get_env(self) -> simpy.Environment:
-        return self.__env
-
-    def set_dqn_trainer(self, dqn_trainer: DQNTrainer):
-        self.__dqn_trainer = dqn_trainer
-        dqn_trainer.env = self.get_env()
-
-    def get_dqn_trainer(self) -> DQNTrainer:
-        if self.__dqn_trainer is None:
-            raise Exception("DQN trainer is not defined.")
-        return self.__dqn_trainer
+    def set_dqn_trainer(self, dqn_trainer):
+        self.dqn_trainer = dqn_trainer
+        dqn_trainer.env = self.env
 
     def set_mac(self, mac):
-        self.__mac = mac
-
-    def get_mac(self):
-        return self.__mac
+        self.mac = mac
 
     def set_tx_params(self, tx_params):
-        self.__tx_params = tx_params
+        self.tx_params = tx_params
 
     def set_node_list(self, node_id):
-        self.__node_list.append(node_id)
+        self.node_list.append(node_id)
 
         if self.use_dqn_features:
             self.dqn_status_info.append(self.init_dqn_status_info(node_id))
@@ -115,8 +130,8 @@ class BanSSCS:
     def init_dqn_status_info(self, node_id) -> DqnStatusInfo | None:
         if not self.use_dqn_features:
             BanSSCS.logger.log(
-                sim_time=self.get_env().now,
-                msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] "
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
                     + f"init_dqn_status_info: use_dqn_features is False. ignoring."
                     + f"if you want to use DQN features, please call use_dqn() first.",
                 level=logging.WARN
@@ -135,8 +150,8 @@ class BanSSCS:
 
     def data_confirm(self, status: BanDataConfirmStatus):
         BanSSCS.logger.log(
-            sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.get_mac().get_mac_params().node_id}] "
+            sim_time=self.env.now,
+            msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
                 + f"MAC reported transaction result: {status.name}",
             level=logging.INFO,
         )
@@ -184,14 +199,14 @@ class BanSSCS:
                         print('Invalid action', file=sys.stderr)
 
                     sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
-                    receiver_mobility = self.__mac.get_phy().get_mobility()
+                    receiver_mobility = self.mac.get_phy().get_mobility()
 
                     distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
 
                     dqn_status.next_state = (rx_power, distance)
                     dqn_status.done = False  # allocate Tx power to this node and successfully receive the data packet
 
-                    result = self.get_dqn_trainer().set_observation(
+                    result = self.dqn_trainer.set_observation(
                         dqn_status.current_state,
                         dqn_status.current_action,
                         dqn_status.next_state,
@@ -214,22 +229,45 @@ class BanSSCS:
 
                     break
 
+
+
+
+        # 수신 세기와 반비례하는 보상
+        self.rewards[rx_packet.get_mac_header().sender_id][self.current_state] -= rx_packet.get_spectrum_tx_params().tx_power
+
+        # Q-table 업데이트
+
+        for _ in tqdm.tqdm(range(100)):
+            next_state: int = int(np.random.choice(tuple(i for i in range(len(self.ENVIRONMENT)))))
+
+            next_reward = self.rewards[self.current_state][next_state]
+
+            time_diff = next_reward + self.gamma * self.q_table[next_state][np.argmax(self.q_table[next_state])]
+            time_diff -= self.q_table[self.current_state][next_state]
+
+            self.q_table[self.current_state][next_state] = self.q_table[self.current_state][next_state] + self.alpha * time_diff
+
+            self.current_state = next_state
+
+
+
+
         ##### added code #####
         sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
-        receiver_mobility = self.__mac.get_phy().get_mobility()
+        receiver_mobility = self.mac.get_phy().get_mobility()
         ######################
 
         distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
 
-        self.__packet_list.append(rx_packet)
+        self.packet_list.append(rx_packet)
 
     def send_beacon(self, event, pbar: tqdm.tqdm | None = None):
         tx_packet = Packet(10)
         tx_params = BanTxParams()
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
         tx_params.seq_num = None
-        tx_params.ban_id = self.__tx_params.ban_id
-        tx_params.node_id = self.__tx_params.node_id
+        tx_params.ban_id = self.tx_params.ban_id
+        tx_params.node_id = self.tx_params.node_id
         tx_params.recipient_id = 999  # broadcast id: 999
 
         # tx_packet.set_mac_header(
@@ -239,43 +277,48 @@ class BanSSCS:
         # )
 
         BanSSCS.logger.log(
-            sim_time=self.get_env().now,
+            sim_time=self.env.now,
             msg=
-            f"{self.__class__.__name__}[{self.__tx_params.node_id}] sending becaon signal...",
+            f"{self.__class__.__name__}[{self.tx_params.node_id}] sending becaon signal...",
             newline="\n"
         )
 
         if pbar is not None:
             pbar.update(1)
 
-        self.get_mac().set_mac_header(
+        self.mac.set_mac_header(
             packet=tx_packet,
             tx_params=tx_params,
             frame_type=BanFrameType.IEEE_802_15_6_MAC_MANAGEMENT,
             frame_subtype=BanFrameSubType.WBAN_MANAGEMENT_BEACON
         )
 
-        beacon_length = self.__beacon_interval * 1000  # ms
+        beacon_length = self.beacon_interval * 1000  # ms
         start_offset = 0
         num_slot = 20  # for test. the number of allocation slots
 
         if self.use_dqn_features:
-            for n_index in self.__node_list:
+            for n_index in self.node_list:
                 # get the action from DQN trainer
                 for dqn_status in self.dqn_status_info:
                     if n_index == dqn_status.node_id:
-                        action = self.get_dqn_trainer().get_action(dqn_status.current_state)
+                        action = self.dqn_trainer.get_action(dqn_status.current_state)
                         dqn_status.current_action = action
                         dqn_status.done = True
-                        self.__tx_power = BanSSCS.ACTION_SET[action]
+                        self.tx_power = BanSSCS.ACTION_SET[action]
                         break
 
-        for n_index in self.__node_list:
+
+
+        strategy = self.ENVIRONMENT[self.current_state]
+
+
+        for node in strategy:
             assigned_link = AssignedLinkElement()
-            assigned_link.allocation_id = n_index
+            assigned_link.allocation_id = node
             assigned_link.interval_start = start_offset
             assigned_link.interval_end = num_slot
-            assigned_link.tx_power = self.__tx_power  # get the tx power (action) from the DQN
+            assigned_link.tx_power = self.tx_power
             start_offset += (num_slot + 1)
 
             if start_offset > beacon_length:
@@ -283,21 +326,40 @@ class BanSSCS:
 
             tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
-        self.get_mac().mlme_data_request(tx_packet)
 
-        event = self.get_env().event()
+
+
+
+
+
+        # for n_index in self.node_list:
+        #     assigned_link = AssignedLinkElement()
+        #     assigned_link.allocation_id = n_index
+        #     assigned_link.interval_start = start_offset
+        #     assigned_link.interval_end = num_slot
+        #     assigned_link.tx_power = self.tx_power  # get the tx power (action) from the DQN
+        #     start_offset += (num_slot + 1)
+        #
+        #     if start_offset > beacon_length:
+        #         break
+        #
+        #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
+
+        self.mac.mlme_data_request(tx_packet)
+
+        event = self.env.event()
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         # event.callbacks.append(self.send_beacon)
         event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
-        self.get_env().schedule(event, priority=0, delay=self.__beacon_interval)
+        self.env.schedule(event, priority=0, delay=self.beacon_interval)
 
 
 
     def beacon_interval_timeout(self, event):
         BanSSCS.logger.log(
-            sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.__tx_params.node_id}] beacon signal interval timeout triggered.",
+            sim_time=self.env.now,
+            msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon signal interval timeout triggered.",
             level=logging.DEBUG
         )
         if self.use_dqn_features:
@@ -307,7 +369,7 @@ class BanSSCS:
                 if dqn_status.done is True:
                     dqn_status.next_state = (-85, -1)  # Rx power beyond the rx_sensitivity
                     dqn_status.reward = -10
-                    result = self.get_dqn_trainer().set_observation(
+                    result = self.dqn_trainer.set_observation(
                         dqn_status.current_state, dqn_status.current_action,
                         dqn_status.next_state, dqn_status.reward, dqn_status.steps,
                         dqn_status.done
@@ -326,18 +388,18 @@ class BanSSCS:
     def send_data(self, tx_packet: Packet):
         # print("send_data: ", tx_packet.get_spectrum_tx_params().tx_power)
         tx_params = BanTxParams()
-        tx_params.ban_id = self.__tx_params.ban_id
-        tx_params.node_id = self.__tx_params.node_id
-        tx_params.recipient_id = self.__tx_params.recipient_id
+        tx_params.ban_id = self.tx_params.ban_id
+        tx_params.node_id = self.tx_params.node_id
+        tx_params.recipient_id = self.tx_params.recipient_id
 
-        self.get_mac().mcps_data_request(self.__tx_params, tx_packet)
+        self.mac.mcps_data_request(self.tx_params, tx_packet)
 
-        event = self.get_env().event()
+        event = self.env.event()
         event._ok = True
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.get_env().schedule(event, priority=0, delay=0.1)
+        self.env.schedule(event, priority=0, delay=0.1)
 
     def get_data(self):
-        return self.__packet_list
+        return self.packet_list

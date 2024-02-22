@@ -6,7 +6,7 @@ import tqdm
 from ban.base.channel.channel import Channel
 from ban.base.channel.prop_delay_model import PropDelayModel
 from ban.base.channel.prop_loss_model import PropLossModel
-# from ban.base.dqn.dqn_trainer import DQNTrainer
+from ban.base.dqn.dqn_trainer import DQNTrainer
 from ban.base.helper.mobility_helper import MobilityHelper
 from ban.base.mobility import BodyPosition, MobilityModel
 from ban.base.packet import Packet
@@ -15,8 +15,8 @@ from ban.device.node import NodeBuilder, Node
 from ban.device.sscs import BanTxParams, BanSSCS
 
 
-SIM_TIME = 100
-show_result_delay_interval = 10
+SIM_TIME = 10000
+show_result_delay_interval = 50
 pbar = tqdm.tqdm(total=(int(SIM_TIME) * 1000) // 255, leave=True, position=0)
 
 
@@ -46,9 +46,9 @@ device.get_phy().set_mobility(mob_n1)
 # DQN-enabled SSCS
 banSSCS = BanSSCS()
 banSSCS.set_env(env)
-# banSSCS.use_dqn()
-# banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
-# banSSCS.dqn_trainer.set_env(env)
+banSSCS.use_dqn()
+banSSCS.set_dqn_trainer(dqn_trainer=DQNTrainer())
+banSSCS.dqn_trainer.set_env(env)
 
 agent = NodeBuilder() \
     .set_device_params(BanTxParams(ban_id=0, node_id=0, recipient_id=1)) \

@@ -30,15 +30,12 @@ class Tracer:
 
     def add_tx_packet(self, packet: Packet):
         self.transaction_count += 1
-        # print("DEBUG: add_tx_packet", packet.get_spectrum_tx_params().tx_power)
         self.tx_packet.append(packet)
         tx_power = packet.get_spectrum_tx_params().tx_power
         self.add_consumed_energy(tx_power)
 
     def add_success_tx_packet(self, packet: Packet):
-        # TODO: tx_packet / success_tx_packet이 패킷 전송률을 구하는게 맞는지
         self.add_tx_packet(packet)
-
         self.success_tx_packet.append(packet)
         self.success_tx_bit += packet.get_size() * 8
 
@@ -46,12 +43,12 @@ class Tracer:
         if self.env is None:
             print('simpy.env was not initialized')
             return -1
+
         if self.env.now - self.reset_time == 0:
             return -1
+
         return self.success_tx_bit / (self.env.now - self.reset_time)
 
-    def get_delay(self):
-        pass
 
     def add_consumed_energy(self, dbm: float):
         # convert dBm to watt
@@ -63,11 +60,13 @@ class Tracer:
 
         self.consume_energy += w
 
+
     def get_energy_consumption_ratio(self):
         if self.initial_energy is None:
             print('Initial energy was not initialized')
         else:
             return self.consume_energy / self.initial_energy
+
 
     def get_pkt_delivery_ratio(self):
         if len(self.success_tx_packet) == 0:
@@ -78,3 +77,5 @@ class Tracer:
 
     def get_transaction_count(self):
         return self.transaction_count
+
+
