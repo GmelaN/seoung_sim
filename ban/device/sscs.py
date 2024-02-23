@@ -6,6 +6,8 @@ import simpy
 import tqdm
 from dataclasses import dataclass
 
+from simpy.events import NORMAL
+
 # from ban.base.dqn.dqn_trainer import DQNTrainer
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
@@ -81,16 +83,16 @@ class BanSSCS:
 
         self.logger = logging.getLogger("BAN-SSCS")
 
-
+        self.coordinator: bool = False
 
         # Q-learning
         self.ENVIRONMENT = (
-            (0, 1, 2),
-            (0, 2, 1),
-            (1, 0, 2),
-            (1, 2, 0),
-            (2, 0, 1),
-            (2, 1, 0),
+            (1, 2, 3),
+            (1, 3, 2),
+            (2, 1, 3),
+            (2, 3, 1),
+            (3, 1, 2),
+            (3, 2, 1),
         )
         self.ACTIONS = tuple(i for i in range(len(self.ENVIRONMENT)))
         self.rewards = [[0 for _ in range(len(self.ENVIRONMENT))] for _ in range(len(self.ENVIRONMENT))]
@@ -155,6 +157,13 @@ class BanSSCS:
                 + f"MAC reported transaction result: {status.name}",
             level=logging.INFO,
         )
+
+
+
+    def get_strategy(self):
+        np.argmax(self.q_table[0])
+
+
 
     def data_indication(self, rx_packet: Packet):
         # data received
@@ -232,22 +241,29 @@ class BanSSCS:
 
 
 
-        # 수신 세기와 반비례하는 보상
-        self.rewards[rx_packet.get_mac_header().sender_id][self.current_state] -= rx_packet.get_spectrum_tx_params().tx_power
 
-        # Q-table 업데이트
+        '''update Q-table'''
+        if self.coordinator:
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
+                level=logging.INFO
+            )
 
-        for _ in tqdm.tqdm(range(100)):
-            next_state: int = int(np.random.choice(tuple(i for i in range(len(self.ENVIRONMENT)))))
+            # 수신 세기와 반비례하는 보상
+            self.rewards[rx_packet.get_mac_header().sender_id][self.current_state] -= rx_packet.get_spectrum_tx_params().tx_power
 
-            next_reward = self.rewards[self.current_state][next_state]
+            for _ in tqdm.tqdm(range(1000)):
+                next_state: int = int(np.random.choice(tuple(i for i in range(len(self.ENVIRONMENT)))))
 
-            time_diff = next_reward + self.gamma * self.q_table[next_state][np.argmax(self.q_table[next_state])]
-            time_diff -= self.q_table[self.current_state][next_state]
+                next_reward = self.rewards[self.current_state][next_state]
 
-            self.q_table[self.current_state][next_state] = self.q_table[self.current_state][next_state] + self.alpha * time_diff
+                time_diff = next_reward + self.gamma * self.q_table[next_state][np.argmax(self.q_table[next_state])]
+                time_diff -= self.q_table[self.current_state][next_state]
 
-            self.current_state = next_state
+                self.q_table[self.current_state][next_state] = self.q_table[self.current_state][next_state] + self.alpha * time_diff
+
+                self.current_state = next_state
 
 
 
@@ -262,6 +278,14 @@ class BanSSCS:
         self.packet_list.append(rx_packet)
 
     def send_beacon(self, event, pbar: tqdm.tqdm | None = None):
+        if not self.coordinator:
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] This device is not coordinator, ignoring send_beacon request.",
+                level=logging.WARNING
+            )
+            return
+
         tx_packet = Packet(10)
         tx_params = BanTxParams()
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
@@ -269,12 +293,6 @@ class BanSSCS:
         tx_params.ban_id = self.tx_params.ban_id
         tx_params.node_id = self.tx_params.node_id
         tx_params.recipient_id = 999  # broadcast id: 999
-
-        # tx_packet.set_mac_header(
-        #     BanFrameType.IEEE_802_15_6_MAC_MANAGEMENT,
-        #     BanFrameSubType.WBAN_MANAGEMENT_BEACON,
-        #     tx_params
-        # )
 
         BanSSCS.logger.log(
             sim_time=self.env.now,
@@ -308,27 +326,30 @@ class BanSSCS:
                         self.tx_power = BanSSCS.ACTION_SET[action]
                         break
 
+        if self.coordinator:
+            '''Q-learning: allocate time slot by strategy'''
+            strategy = self.ENVIRONMENT[self.current_state]
 
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}",
+                level=logging.DEBUG
+            )
 
-        strategy = self.ENVIRONMENT[self.current_state]
+            print(f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}")
 
+            for node in strategy:
+                assigned_link = AssignedLinkElement()
+                assigned_link.allocation_id = node
+                assigned_link.interval_start = start_offset
+                assigned_link.interval_end = num_slot
+                assigned_link.tx_power = self.tx_power
+                start_offset += (num_slot + 1)
 
-        for node in strategy:
-            assigned_link = AssignedLinkElement()
-            assigned_link.allocation_id = node
-            assigned_link.interval_start = start_offset
-            assigned_link.interval_end = num_slot
-            assigned_link.tx_power = self.tx_power
-            start_offset += (num_slot + 1)
+                if start_offset > beacon_length:
+                    break
 
-            if start_offset > beacon_length:
-                break
-
-            tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
-
-
-
-
+                tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
 
 
@@ -352,7 +373,7 @@ class BanSSCS:
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         # event.callbacks.append(self.send_beacon)
         event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
-        self.env.schedule(event, priority=0, delay=self.beacon_interval)
+        self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
 
@@ -399,7 +420,7 @@ class BanSSCS:
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.env.schedule(event, priority=0, delay=0.1)
+        self.env.schedule(event, priority=NORMAL, delay=0.1)
 
     def get_data(self):
         return self.packet_list

@@ -361,6 +361,7 @@ class BanMac:
             # 1. 비콘 신호인 경우
             if (rx_frame_type == BanFrameType.IEEE_802_15_6_MAC_MANAGEMENT
                     and rx_recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value):
+
                 # 수신한 비콘 신호의 남은 할당 시간 계산
                 self.__beacon_rx_time = self.get_env().now
                 assigned_link = rx_packet.get_frame_body().get_assigned_link_info(self.__mac_params.node_id)
@@ -398,7 +399,13 @@ class BanMac:
                     self.__alloc_start_time = tx_start_time
                     self.__alloc_end_time = tx_timeout
 
-                    # TODO: 왜 갑자기 TX 시작?
+                    BanMac.logger.log(
+                        sim_time=self.get_env().now,
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] SET BEACON PARAMETERS TO: alloc_start_time: {self.__alloc_start_time}, alloc_end_time: {self.__alloc_end_time}",
+                        level=logging.INFO
+                    )
+
+
                     event = self.__env.event()
                     event._ok = True
                     event.callbacks.append(self.start_tx)
@@ -527,6 +534,13 @@ class BanMac:
                 pass
             elif tx_frame_type == BanFrameType.IEEE_802_15_6_MAC_DATA:
                 # TODO: WHAT IS THIS
+
+                BanMac.logger.log(
+                    sim_time=self.get_env().now,
+                    msg=f"BanMac [{self.get_mac_params().node_id}]alloc_start_time: {self.__alloc_start_time}, alloc_end_time: {self.__alloc_end_time}, beacon_rx_time: {self.__beacon_rx_time} slot_duration:{slot_duration}, reamin_alloc_time:{remain_alloc_time}, expected_tx_time: {expected_tx_time}, guard_time: {guard_time}, ack_rx_time: {ack_rx_time}",
+                    level=logging.INFO
+                )
+
                 if (microseconds(slot_duration) >= remain_alloc_time or
                         (expected_tx_time + guard_time + ack_rx_time) >= remain_alloc_time):
 

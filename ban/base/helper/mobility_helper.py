@@ -19,7 +19,7 @@ class MobilityHelper:
         self.right_leg_direction = 1
         self.right_leg_degree = -100
 
-        self.movement_cycle = 1     # seconds
+        self.movement_cycle = (0.255 / 2)     # seconds
         self.velocity = 0.5        # m/s
 
         # static position
