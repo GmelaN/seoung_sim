@@ -1,6 +1,5 @@
 import logging
 from enum import Enum
-import sys
 
 import simpy
 import tqdm
@@ -8,13 +7,11 @@ from dataclasses import dataclass
 
 from simpy.events import NORMAL
 
-# from ban.base.dqn.dqn_trainer import DQNTrainer
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
+from ban.base.tracer import Tracer
 from ban.base.utils import milliseconds
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
-
-from typing import List
 
 import numpy as np
 
@@ -24,6 +21,7 @@ class BanTxOption(Enum):
     TX_OPTION_ACK = 1
     TX_OPTION_GTS = 2
     TX_OPTION_INDIRECT = 3
+
 
 class BanDataConfirmStatus(Enum):
     IEEE_802_15_6_SUCCESS = 0
@@ -65,8 +63,6 @@ class BanTxParams:
 class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
 
-    ACTION_SET = [- 25, -24, -23, -22, -21, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2]    # dBm
-
     def __init__(self):
         self.env: simpy.Environment | None = None
         self.packet_list: list = list()
@@ -76,42 +72,13 @@ class BanSSCS:
         self.beacon_interval: float = milliseconds(255)  # ms
         self.tx_power: float = 0   # dBm
 
-        # DQN feature
-        self.dqn_status_info: List[DqnStatusInfo] = list()
-        self.dqn_trainer: None = None  # To interact with a dqn_trainer
-        self.use_dqn_features: bool = False
-
         self.logger = logging.getLogger("BAN-SSCS")
 
         self.coordinator: bool = False
 
-        # Q-learning
-        self.ENVIRONMENT = (
-            (1, 2, 3),
-            (1, 3, 2),
-            (2, 1, 3),
-            (2, 3, 1),
-            (3, 1, 2),
-            (3, 2, 1),
-        )
-        self.ACTIONS = tuple(i for i in range(len(self.ENVIRONMENT)))
-        self.rewards = [[0 for _ in range(len(self.ENVIRONMENT))] for _ in range(len(self.ENVIRONMENT))]
-        self.q_table = [[0 for _ in range(len(self.ACTIONS))] for _ in range(len(self.ENVIRONMENT))]
-
-        self.gamma = 0.9
-        self.alpha = 0.75
-
-        self.current_state = 0
-        self.current_reward = 0
-
-
 
     def set_env(self, env):
         self.env = env
-
-    def set_dqn_trainer(self, dqn_trainer):
-        self.dqn_trainer = dqn_trainer
-        dqn_trainer.env = self.env
 
     def set_mac(self, mac):
         self.mac = mac
@@ -119,36 +86,10 @@ class BanSSCS:
     def set_tx_params(self, tx_params):
         self.tx_params = tx_params
 
+
     def set_node_list(self, node_id):
         self.node_list.append(node_id)
 
-        if self.use_dqn_features:
-            self.dqn_status_info.append(self.init_dqn_status_info(node_id))
-
-    def use_dqn(self):
-        self.use_dqn_features = True
-        return
-
-    def init_dqn_status_info(self, node_id) -> DqnStatusInfo | None:
-        if not self.use_dqn_features:
-            BanSSCS.logger.log(
-                sim_time=self.env.now,
-                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
-                    + f"init_dqn_status_info: use_dqn_features is False. ignoring."
-                    + f"if you want to use DQN features, please call use_dqn() first.",
-                level=logging.WARN
-            )
-            return None
-
-        new_dqn_status = DqnStatusInfo()
-        new_dqn_status.node_id = node_id
-        new_dqn_status.current_state = (-80, 0)   # initial state is (Rx power, distance)
-        new_dqn_status.current_action = 0
-        new_dqn_status.reward = 0
-        new_dqn_status.next_state = 0
-        new_dqn_status.done = True
-        new_dqn_status.steps = 0
-        return new_dqn_status
 
     def data_confirm(self, status: BanDataConfirmStatus):
         BanSSCS.logger.log(
@@ -157,90 +98,13 @@ class BanSSCS:
                 + f"MAC reported transaction result: {status.name}",
             level=logging.INFO,
         )
-
-
-
-    def get_strategy(self):
-        np.argmax(self.q_table[0])
-
+        print(status.name)
 
 
     def data_indication(self, rx_packet: Packet):
         # data received
         rx_power = rx_packet.get_spectrum_tx_params().tx_power
         sender_id = rx_packet.get_mac_header().sender_id
-
-        if self.use_dqn_features:
-            for dqn_status in self.dqn_status_info:
-                if dqn_status.node_id == sender_id:
-                    # calculate the reward value
-                    if dqn_status.current_action == 0:      # -25 dBm
-                        dqn_status.reward += 10
-                    elif dqn_status.current_action == 1:    # -24 dBm
-                        dqn_status.reward += 9.5
-                    elif dqn_status.current_action == 2:    # -23 dBm
-                        dqn_status.reward += 9
-                    elif dqn_status.current_action == 3:    # -22 dBm
-                        dqn_status.reward += 8.5
-                    elif dqn_status.current_action == 4:    # -21 dBm
-                        dqn_status.reward += 8
-                    elif dqn_status.current_action == 5:    # -20 dBm
-                        dqn_status.reward += 7.5
-                    elif dqn_status.current_action == 6:    # -18 dBm
-                        dqn_status.reward += 7
-                    elif dqn_status.current_action == 7:    # -16 dBm
-                        dqn_status.reward += 6.5
-                    elif dqn_status.current_action == 8:    # -14 dBm
-                        dqn_status.reward += 6
-                    elif dqn_status.current_action == 9:    # -12 dBm
-                        dqn_status.reward += 5.5
-                    elif dqn_status.current_action == 10:    # -10 dBm
-                        dqn_status.reward += 5
-                    elif dqn_status.current_action == 11:    # -8 dBm
-                        dqn_status.reward += 4
-                    elif dqn_status.current_action == 12:    # -6 dBm
-                        dqn_status.reward += 3
-                    elif dqn_status.current_action == 13:    # -4 dBm
-                        dqn_status.reward += 2
-                    elif dqn_status.current_action == 14:    # -2 dBm
-                        dqn_status.reward += 1
-                    else:
-                        print('Invalid action', file=sys.stderr)
-
-                    sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
-                    receiver_mobility = self.mac.get_phy().get_mobility()
-
-                    distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
-
-                    dqn_status.next_state = (rx_power, distance)
-                    dqn_status.done = False  # allocate Tx power to this node and successfully receive the data packet
-
-                    result = self.dqn_trainer.set_observation(
-                        dqn_status.current_state,
-                        dqn_status.current_action,
-                        dqn_status.next_state,
-                        dqn_status.reward,
-                        dqn_status.steps,
-                        dqn_status.done
-                    )
-
-                    # start new episode
-                    if result is True:
-                        dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
-                        dqn_status.current_action = 0
-                        dqn_status.reward = 0
-                        dqn_status.next_state = 0
-                        dqn_status.done = True
-                        dqn_status.steps = 0
-                    else:
-                        dqn_status.current_state = dqn_status.next_state
-                        dqn_status.steps += 1
-
-                    break
-
-
-
-
 
         '''update Q-table'''
         if self.coordinator:
@@ -249,22 +113,6 @@ class BanSSCS:
                 msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
                 level=logging.INFO
             )
-
-            # 수신 세기와 반비례하는 보상
-            self.rewards[rx_packet.get_mac_header().sender_id][self.current_state] -= rx_packet.get_spectrum_tx_params().tx_power
-
-            for _ in tqdm.tqdm(range(1000)):
-                next_state: int = int(np.random.choice(tuple(i for i in range(len(self.ENVIRONMENT)))))
-
-                next_reward = self.rewards[self.current_state][next_state]
-
-                time_diff = next_reward + self.gamma * self.q_table[next_state][np.argmax(self.q_table[next_state])]
-                time_diff -= self.q_table[self.current_state][next_state]
-
-                self.q_table[self.current_state][next_state] = self.q_table[self.current_state][next_state] + self.alpha * time_diff
-
-                self.current_state = next_state
-
 
 
 
@@ -315,56 +163,30 @@ class BanSSCS:
         start_offset = 0
         num_slot = 20  # for test. the number of allocation slots
 
-        if self.use_dqn_features:
-            for n_index in self.node_list:
-                # get the action from DQN trainer
-                for dqn_status in self.dqn_status_info:
-                    if n_index == dqn_status.node_id:
-                        action = self.dqn_trainer.get_action(dqn_status.current_state)
-                        dqn_status.current_action = action
-                        dqn_status.done = True
-                        self.tx_power = BanSSCS.ACTION_SET[action]
-                        break
-
         if self.coordinator:
             '''Q-learning: allocate time slot by strategy'''
-            strategy = self.ENVIRONMENT[self.current_state]
-
-            BanSSCS.logger.log(
-                sim_time=self.env.now,
-                msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}",
-                level=logging.DEBUG
-            )
-
-            print(f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}")
-
-            for node in strategy:
-                assigned_link = AssignedLinkElement()
-                assigned_link.allocation_id = node
-                assigned_link.interval_start = start_offset
-                assigned_link.interval_end = num_slot
-                assigned_link.tx_power = self.tx_power
-                start_offset += (num_slot + 1)
-
-                if start_offset > beacon_length:
-                    break
-
-                tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
-
-
-
-        # for n_index in self.node_list:
-        #     assigned_link = AssignedLinkElement()
-        #     assigned_link.allocation_id = n_index
-        #     assigned_link.interval_start = start_offset
-        #     assigned_link.interval_end = num_slot
-        #     assigned_link.tx_power = self.tx_power  # get the tx power (action) from the DQN
-        #     start_offset += (num_slot + 1)
-        #
-        #     if start_offset > beacon_length:
-        #         break
-        #
-        #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
+            # strategy = self.ENVIRONMENT[self.current_state]
+            #
+            # BanSSCS.logger.log(
+            #     sim_time=self.env.now,
+            #     msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}",
+            #     level=logging.DEBUG
+            # )
+            #
+            # print(f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}")
+            #
+            # for node in strategy:
+            #     assigned_link = AssignedLinkElement()
+            #     assigned_link.allocation_id = node
+            #     assigned_link.interval_start = start_offset
+            #     assigned_link.interval_end = num_slot
+            #     assigned_link.tx_power = self.tx_power
+            #     start_offset += (num_slot + 1)
+            #
+            #     if start_offset > beacon_length:
+            #         break
+            #
+            #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
         self.mac.mlme_data_request(tx_packet)
 
@@ -376,38 +198,15 @@ class BanSSCS:
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
-
     def beacon_interval_timeout(self, event):
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon signal interval timeout triggered.",
             level=logging.DEBUG
         )
-        if self.use_dqn_features:
-            # Calculate the next_state, reward, done
-            for dqn_status in self.dqn_status_info:
-                # if the previous resource allocation (tx power) was failed
-                if dqn_status.done is True:
-                    dqn_status.next_state = (-85, -1)  # Rx power beyond the rx_sensitivity
-                    dqn_status.reward = -10
-                    result = self.dqn_trainer.set_observation(
-                        dqn_status.current_state, dqn_status.current_action,
-                        dqn_status.next_state, dqn_status.reward, dqn_status.steps,
-                        dqn_status.done
-                    )
-
-                    # start new episode
-                    if result is True:
-                        dqn_status.current_state = (-80, 0)  # initial state is (Rx power, distance)
-                        dqn_status.current_action = 0
-                        dqn_status.reward = 0
-                        dqn_status.next_state = 0
-                        dqn_status.done = True
-                        dqn_status.steps = 0
 
 
     def send_data(self, tx_packet: Packet):
-        # print("send_data: ", tx_packet.get_spectrum_tx_params().tx_power)
         tx_params = BanTxParams()
         tx_params.ban_id = self.tx_params.ban_id
         tx_params.node_id = self.tx_params.node_id
@@ -421,6 +220,7 @@ class BanSSCS:
             lambda _: self.send_data(tx_packet=tx_packet)
         )
         self.env.schedule(event, priority=NORMAL, delay=0.1)
+
 
     def get_data(self):
         return self.packet_list

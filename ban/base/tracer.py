@@ -35,7 +35,6 @@ class Tracer:
         self.add_consumed_energy(tx_power)
 
     def add_success_tx_packet(self, packet: Packet):
-        self.add_tx_packet(packet)
         self.success_tx_packet.append(packet)
         self.success_tx_bit += packet.get_size() * 8
 

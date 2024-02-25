@@ -1,97 +1,136 @@
+import enum
 import random
 import numpy as np
+
+from dataclasses import dataclass
+
 from tqdm.auto import tqdm
 
 from ban.base.tracer import Tracer
+from ban.device.sscs import BanSSCS
 
-NUM_CHANNELS = 1
-NUM_ACTIONS = 15
+class MovementPhase(enum):
+    PHASE_0: int
+    PHASE_1: int
+    PHASE_2: int
+
+# class DistanceLevel(enum):
+#     VERY_CLOSE: int
+#     CLOSE: int
+#     NEUTRAL: int
+#     FAR: int
+#     VERY_FAR: int
+
+
+@dataclass
+class State:
+    # distance_level: DistanceLevel
+    movement_phase: MovementPhase
+    time_slot_allocations: list[int]
+
 
 class QLearningTrainer:
-    def __init__(self, node_count: int):
-        # WBAN에서 현재 에이전트에 연결되어 있는 노드의 수
-        self.node_count = node_count
+    def __init__(self, node_count: int, sscs: BanSSCS, learning_rate: float = 0.5, discount_factor: float = 0.9, exploration_rate: float = 0.1):
+        self.node_count: int = node_count        # WBAN에서 현재 에이전트에 연결되어 있는 노드의 수
+        self.sscs: BanSSCS = sscs                    # 코디네이터의 SSCS
+        self.tracer: Tracer = Tracer()      # 패킷 정보를 담을 Tracer
 
-        self.env = None
-        self.net_env = None  # BAN environment
-        self.data_list = list()
+        # 학습 파라미터
+        self.alpha: float = learning_rate
+        self.gamma: float = discount_factor
+        self.epsilon: float = exploration_rate
 
-        self.tracer: Tracer = Tracer()
+        # 학습 공간
+        self.actions: list = self.get_initalized_actions()
+        # TODO: q-table 차원 적절하게 수정
+        self.q_table: np.ndarray = np.zeros(1)
 
-        self.current_episode = 0
 
-        self.pbar = tqdm(
-            initial=self.current_episode,
-            total=self.episodes,
-            unit='episodes',
-            position=0,
-            desc="TRAIN STATUS",
-            leave=True
-        )
 
-    def get_q_values(self, x):
-        # 신경망으로 예측된 Q값 반환
-        return self.model.predict(x, verbose=0)
+    def choose_acion(self, current_state):
+        '''
+        epsilon-greedy 전략으로 행동을 결정합니다.
+        :param current_state: 현재 state
+        :return: 현재 state에서 취할 action
+        '''
 
-    def increase_target_update_counter(self):
-        self.target_update_counter += 1
-        if self.target_update_counter >= self.target_update_freq:
-            self.target_model.set_weights(self.model.get_weights())
-            self.target_update_counter = 0
+        # 탐험
+        if np.random.rand() < self.epsilon:
+            action = np.random.choice(self.actions)
 
-    def set_observation(self, current_state, current_action, next_state, reward, steps, done) -> bool:
-        if self.current_episode > self.episodes:
-            # print('All the training episodes end: do nothing')
-            return True
-
-        self.update_replay_memory(current_state, current_action, reward, next_state, done)
-
-        if done is True or steps > self.max_steps:
-            self.current_episode += 1
-
-            self.increase_target_update_counter()
-
-            # decay epsilon
-            self.epsilon = max(self.epsilon - self.epsilon_decay, self.min_epsilon)
-
-            # update pbar
-            self.pbar.update(1)
-
-            # current episode is done
-            return True
+        # 탐색
         else:
-            # current episode is not done
-            return False
-
-    """
-    에이전트가 다음 에피소드에 취할 액션을 선택합니다.
-
-    :param current_state:  
-    """
-    def get_action(self, current_state):
-        # 에피소드 반복 종료 시: 최고의 보상을 받은 행동을 선택
-        if self.current_episode > self.episodes:
-            action = np.argmax(self.get_q_values(np.array([current_state])))
-            return action
-
-        # epsilon에 따라 새로운 탐험을 할 것인지, 활용을 할 것인지 정함
-
-        # 활용(Exploitation): 에이전트가 알고 있는 정보를 바탕으로 최적 행동을 선택
-        if random.random() > self.epsilon:
-            action = np.argmax(self.get_q_values(np.array([current_state])))
-
-        # 탐험(Exploration): 에이전트가 무작위 행동을 선택하여 새로운 지식을 얻음
-        else:
-            action = np.random.randint(NUM_ACTIONS)
+            state_actions = self.q_table[current_state, :]
+            action = self.actions[np.argmax(state_actions)]
 
         return action
 
-    def set_env(self, env):
-        self.env = env
-        self.tracer.set_env(env)
 
-    def set_sscs(self, m_sscs):
-        self.net_env = m_sscs
+    def get_current_state(self) -> State:
+        '''
+        현재 노드 간 거리,
+        :return:
+        '''
+        # distance_level: DistanceLevel = self.measure_distance_level()
+        movement_phase: MovementPhase = self.detect_movement_phase()
+        time_slot_allocations: list[int] = [-1 for _ in range(self.node_count)]
 
-    def get_data(self, event):
-        self.data_list = self.net_env.get_data()
+        return State(
+            # distance_level=distance_level,
+            movement_phase=movement_phase,
+            time_slot_allocations=time_slot_allocations
+        )
+
+
+    def get_next_state(self, current_state: State, action: tuple[int, int]) -> State:
+        '''
+        입력으로 받은 현재 state에 action을 반영한 next_state를 계산합니다.
+        :param current_state: State, 현재 state
+        :param action: tuple(node_id, time_slot_id), 현재 state에 가할 action
+        :return: State, 다음 state
+        '''
+
+        node_id, time_slot_id = action
+
+        next_state: State = State(
+            # distance_level=current_state.distance_level,
+            movement_phase=current_state.movement_phase,
+            time_slot_allocations=current_state.time_slot_allocations.copy()
+        )
+
+        next_state.time_slot_allocations[time_slot_id] = node_id
+
+        # 여기에서 추가적으로 환경 변화를 모의할 수 있습니다.
+        # 예를 들어, 노드 간 거리 또는 움직임 패턴의 변화 등을 반영할 수 있습니다.
+        # next_state.distance_level = self.measure_distance_level()
+        # next_state.movement_phase = self.detect_movement_phase()
+
+        return next_state
+
+
+    def calculate_reward(self, current_state, action):
+        pass
+
+
+    def update_q_table(self, current_state, action, reward, next_state):
+        pass
+
+    def train(self):
+        pass
+
+
+    def get_initalized_actions(self):
+        actions = []
+        for node in range(self.node_count):
+            for slot in range(self.node_count):
+                actions.append((node, slot))
+
+        return actions
+
+
+    def measure_distance_level(self) -> DistanceLevel:
+        pass
+
+
+    def detect_movement_phase(self) -> MovementPhase:
+        pass

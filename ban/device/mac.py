@@ -299,10 +299,6 @@ class BanMac:
 
     # Callback function (called from PHY)
     def pd_data_indication(self, rx_packet: Packet):
-        assert rx_packet is not None
-        assert rx_packet.get_mac_header().ban_id is not None
-        assert self.__mac_params.node_id is not None
-
         broadcast = "BROADCAST"
         recipient_id = rx_packet.get_mac_header().recipient_id
 
@@ -752,13 +748,13 @@ class BanMac:
                 energy_consumption_ratio = f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
             )
 
-        # self.get_tracer().reset()
-        event = self.get_env().event()
-        event._ok = True
-        event.callbacks.append(
-            lambda _: self.show_result(pbar=pbar, delay_interval=delay_interval)
-        )
-        self.get_env().schedule(event, priority=0, delay=delay_interval)
+        self.get_tracer().reset()
+        # event = self.get_env().event()
+        # event._ok = True
+        # event.callbacks.append(
+        #     lambda _: self.show_result(pbar=pbar, delay_interval=delay_interval)
+        # )
+        # self.get_env().schedule(event, priority=0, delay=delay_interval)
 
 
     def plme_cca_confirm(self, status: BanPhyTRxState):
