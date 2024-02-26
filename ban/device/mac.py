@@ -748,7 +748,7 @@ class BanMac:
                 energy_consumption_ratio = f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
             )
 
-        self.get_tracer().reset()
+        # self.get_tracer().reset()
         # event = self.get_env().event()
         # event._ok = True
         # event.callbacks.append(

@@ -1,4 +1,5 @@
 import enum
+import logging
 import random
 from collections import namedtuple, defaultdict
 from typing import Dict
@@ -10,34 +11,38 @@ from dataclasses import dataclass
 from tqdm.auto import tqdm
 
 from ban.base.helper.mobility_helper import MovementPhase, MobilityHelper
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.tracer import Tracer
-from ban.device.sscs import BanSSCS
 
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class State:
     phase: MovementPhase
     slot: int
 
 
 class QLearningTrainer:
+    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+
     def __init__(
             self,
             node_count: int,
             time_slots: int,
-            sscs: BanSSCS,
+            sscs,
             movement_phases: MovementPhase,
             mobility_helper: MobilityHelper,
+            tracers: list[Tracer],
             learning_rate: float = 0.5,
             discount_factor: float = 0.9,
-            exploration_rate: float = 0.1,
+            exploration_rate: float = 0.7,
     ):
-        self.sscs: BanSSCS = sscs
+        self.sscs = sscs
         self.node_count: int = node_count
         self.time_slots: int = time_slots
         self.mobility_helper: MobilityHelper = mobility_helper
+        self.tracers: list[Tracer] = tracers
 
         self.movement_phases: MovementPhase = movement_phases
 
@@ -58,11 +63,14 @@ class QLearningTrainer:
         '''
         # explore
         if np.random.rand() < self.exploration_rate:
-            return self.action_space[np.random.randint(self.node_count)]
+            action = self.action_space[np.random.randint(self.node_count)]
 
         # exploit
         else:
-            return self.action_space[np.argmax(self.q_table[current_state])]
+            action = self.action_space[np.argmax(self.q_table[current_state])]
+
+        QLearningTrainer.logger.log(msg=f"action is: {action}")
+        return action
 
 
     def get_next_state(self, current_state: State, action: int) -> State:
@@ -85,7 +93,13 @@ class QLearningTrainer:
 
 
     def calculate_reward(self, action: int) -> float:
-        return self.get_throughput(action) * self.get_node_priorities(action)
+        throughput = self.get_throughput(action)
+
+        # 전송 데이터가 0인 경우 음의 보상
+        if throughput == 0:
+            return -1
+
+        return self.get_throughput(action) * self.get_node_priority(action)
 
 
     def train(self, iterations: int = 10):
@@ -101,14 +115,28 @@ class QLearningTrainer:
 
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
+        # TODO: 스루풋 초기화 시점
+        # self.sscs.reset_throughput()
+        for tracer in self.tracers:
+            tracer.reset()
+
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
 
         state: State = State(phase=phase, slot=0)
 
         for i in range(self.time_slots):
-            time_slots[i] = np.argmax(self.q_table[state])
+            node: int = np.argmax(self.q_table[state])
+
+            if node == 0:
+                node = -1
+
+            time_slots[i] = node
             state = State(phase=state.phase, slot=state.slot + 1)
+
+        # 타임 슬롯이 모두 빈 경우 - 기본값으로 설정
+        if max(time_slots) == -1:
+            time_slots = [i + 1 for i in range(self.time_slots)]
 
         return time_slots
 
@@ -118,18 +146,11 @@ class QLearningTrainer:
 
 
     def get_throughput(self, node_id: int) -> float:
+        print(self.tracers[node_id].get_throughput())
         # TODO: 정확한 스루풋 반환
+        return self.tracers[node_id].get_throughput()
+        # return self.sscs.get_throughput()
 
 
-        return 1.0
-
-
-    def get_node_priorities(self, node_id: int) -> int:
-        # TODO 우선순위 구하는 매커니즘 추가
-
-        '''
-
-        :param node_id:
-        :return: node priority
-        '''
-        return node_id
+    def get_node_priority(self, node_id: int) -> int:
+        return self.sscs.get_priority(node_id)

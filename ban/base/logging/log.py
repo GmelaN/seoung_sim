@@ -29,7 +29,7 @@ class SeoungSimLogger:
 
 
     def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
-        return
+        # return
         full_message = f"[SimTime: {sim_time:.10f}] {msg}"
 
         if len(newline) != 0:
