@@ -1,8 +1,27 @@
+import dataclasses
+import enum
 import math
 import random
 
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
+
+MOVEMENT_CYCLE = 0.255          # seconds
+
+
+class MovementPhase(enum.Enum):
+    PHASE_0: int = 0
+    PHASE_1: int = 1
+    # PHASE_2: int = 2
+
+
+@dataclasses.dataclass
+class MobilityState:
+    # Phase의 수 -> 전체 페이즈의 수도 알 수 있음
+    phases: tuple[MovementPhase] = tuple(MovementPhase)
+
+    # 각 페이즈의 기간 정보 -> 한 전체 주기의 정보도 알 수 있음 (seconds)
+    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
 
 
 class MobilityHelper:
@@ -19,8 +38,8 @@ class MobilityHelper:
         self.right_leg_direction = 1
         self.right_leg_degree = -100
 
-        self.movement_cycle = (0.255 / 2)     # seconds
-        self.velocity = 0.5        # m/s
+        self.movement_cycle = MOVEMENT_CYCLE     # seconds
+        self.velocity = 0.5                      # m/s
 
         # static position
         self.head = Vector(1.1, 1.8, 1)                 # x, y, z
@@ -43,6 +62,13 @@ class MobilityHelper:
 
         self.mobility_list = list()
 
+        # 모빌리티의 페이즈 정보
+        self.phase_info = MobilityState()
+
+        # 현재 모빌리티 정보
+        self.current_phase = MovementPhase.PHASE_0
+
+
     def add_mobility_list(self, mobility: MobilityModel):
         self.mobility_list.append(mobility)
         self.update_position()
@@ -54,6 +80,9 @@ class MobilityHelper:
         self.move_right_leg()
 
         self.update_position()
+
+        # 현재 페이즈 정보 업데이트
+        self.current_phase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
 
         event = self.env.event()
         event._ok = True
