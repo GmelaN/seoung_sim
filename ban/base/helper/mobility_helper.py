@@ -6,7 +6,8 @@ import random
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 
-MOVEMENT_CYCLE = 0.255          # seconds
+MOVEMENT_CYCLE = 0.1 + 0.05                # seconds
+RANGE = 0.1
 
 
 class MovementPhase(enum.Enum):
@@ -16,7 +17,7 @@ class MovementPhase(enum.Enum):
 
 
 @dataclasses.dataclass
-class MobilityState:
+class MovementInfo:
     # Phase의 수 -> 전체 페이즈의 수도 알 수 있음
     phases: tuple[MovementPhase] = tuple(MovementPhase)
 
@@ -63,7 +64,7 @@ class MobilityHelper:
         self.mobility_list = list()
 
         # 모빌리티의 페이즈 정보
-        self.phase_info = MobilityState()
+        self.phase_info = MovementInfo()
 
         # 현재 모빌리티 정보
         self.current_phase = MovementPhase.PHASE_0
@@ -115,7 +116,7 @@ class MobilityHelper:
             direction_x = 1     # right direction
 
         new_position = Vector(0, 0, 0)
-        new_position.x = random.uniform(0, 0.3) * direction_x
+        new_position.x = random.uniform(0, RANGE) * direction_x
         new_position.y = math.cos(-a) * 0.25    # 0.25 m => distance from left shoulder to left elbow
         new_position.z = math.sin(-a) * 0.25
 
@@ -154,7 +155,7 @@ class MobilityHelper:
             direction_x = 1     # right direction
 
         new_position = Vector(0, 0, 0)
-        new_position.x = random.uniform(0, 0.3) * direction_x
+        new_position.x = random.uniform(0, RANGE) * direction_x
         new_position.y = math.cos(-a) * 0.25    # 0.25 m => distance from right shoulder to right elbow
         new_position.z = math.sin(-a) * 0.25
 

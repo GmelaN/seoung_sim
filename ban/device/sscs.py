@@ -7,14 +7,15 @@ from dataclasses import dataclass
 
 from simpy.events import NORMAL
 
+from ban.base.helper.mobility_helper import MobilityHelper, MovementInfo
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
-from ban.base.tracer import Tracer
 from ban.base.utils import milliseconds
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
 
-import numpy as np
+from ban.base.q_learning.q_learning_trainer import QLearningTrainer
 
+from ban.base.tracer import Tracer
 
 class BanTxOption(Enum):
     TX_OPTION_NONE = 0
@@ -59,22 +60,44 @@ class BanTxParams:
     tx_option: BanTxOption | None = None
 
 
+
+
+
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
+    NUM_SLOTS = 10
 
-    def __init__(self):
+    def __init__(self, coordinator: bool = False, mobility_helper: MobilityHelper | None = None, node_count: int | None = None):
         self.env: simpy.Environment | None = None
         self.packet_list: list = list()
         self.mac: None = None   # To interact with a MAC layer
         self.node_list: list = list()
         self.tx_params: BanTxParams = BanTxParams()
-        self.beacon_interval: float = milliseconds(255)  # ms
         self.tx_power: float = 0   # dBm
+
+        self.q_learning_trainer = QLearningTrainer(
+            mobility_helper=mobility_helper,
+            sscs=self,
+            movement_phases=mobility_helper.phase_info(),
+            node_count=node_count,
+            time_slots=BanSSCS.NUM_SLOTS
+        )
 
         self.logger = logging.getLogger("BAN-SSCS")
 
-        self.coordinator: bool = False
+        # 단위는 초 단위
+        self.beacon_interval: float = milliseconds(255)  # ms
+
+        self.coordinator: bool = coordinator
+
+        # 코디네이터인 경우 페이즈 검출을 위한 MobilityHelper를 붙임
+        if self.coordinator:
+            self.mobility_helper: MobilityHelper = mobility_helper
+            self.movement_info: MovementInfo = self.mobility_helper.phase_info
+
+            # 비콘 주기를 움직임 페이즈와 동기화
+            self.beacon_interval = sum(self.movement_info.phase_duration)
 
 
     def set_env(self, env):
@@ -114,15 +137,6 @@ class BanSSCS:
                 level=logging.INFO
             )
 
-
-
-        ##### added code #####
-        sender_mobility = rx_packet.get_spectrum_tx_params().tx_phy.get_mobility()
-        receiver_mobility = self.mac.get_phy().get_mobility()
-        ######################
-
-        distance = sender_mobility.get_distance_from(receiver_mobility.get_position())
-
         self.packet_list.append(rx_packet)
 
     def send_beacon(self, event, pbar: tqdm.tqdm | None = None):
@@ -134,6 +148,7 @@ class BanSSCS:
             )
             return
 
+        # 비콘 패킷 설정
         tx_packet = Packet(10)
         tx_params = BanTxParams()
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
@@ -159,41 +174,55 @@ class BanSSCS:
             frame_subtype=BanFrameSubType.WBAN_MANAGEMENT_BEACON
         )
 
+        # 현재 페이즈의 주기에 맞게 비콘 주기 업데이트
+        self.update_beacon_interval()
+
+        # beacon_length는 ms 단위 -> beacon_interval은 s 단위이므로 1000을 곱함
         beacon_length = self.beacon_interval * 1000  # ms
         start_offset = 0
-        num_slot = 20  # for test. the number of allocation slots
+        num_slot = BanSSCS.NUM_SLOTS  # for test. the number of allocation slots
 
-        if self.coordinator:
-            '''Q-learning: allocate time slot by strategy'''
-            # strategy = self.ENVIRONMENT[self.current_state]
-            #
-            # BanSSCS.logger.log(
-            #     sim_time=self.env.now,
-            #     msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}",
-            #     level=logging.DEBUG
-            # )
-            #
-            # print(f"{self.__class__.__name__}[{self.tx_params.node_id}] Q-learning: selected strategy is: {strategy}")
-            #
-            # for node in strategy:
-            #     assigned_link = AssignedLinkElement()
-            #     assigned_link.allocation_id = node
-            #     assigned_link.interval_start = start_offset
-            #     assigned_link.interval_end = num_slot
-            #     assigned_link.tx_power = self.tx_power
-            #     start_offset += (num_slot + 1)
-            #
-            #     if start_offset > beacon_length:
-            #         break
-            #
-            #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
+        '''Q-learning: allocate time slot by strategy'''
+
+        slots = self.q_learning_trainer.get_time_slots(self.q_learning_trainer.detect_movement_phase())
+        for slot in slots:
+            if slot != -1:
+                assigned_link = AssignedLinkElement()
+                assigned_link.allocation_id = slot
+                assigned_link.interval_start = start_offset
+                assigned_link.interval_end = num_slot
+                assigned_link.tx_power = self.tx_power
+
+                tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
+
+            start_offset += (num_slot + 1)
+
+            if start_offset > beacon_length:
+                break
+
+
+        # 비콘 정보 담기
+        # for i in range(num_slot):
+        #     assigned_link = AssignedLinkElement()
+        #
+        #     # TODO: 타임 슬롯 할당 순서 받아오기
+        #     assigned_link.allocation_id = i
+        #     assigned_link.interval_start = start_offset
+        #     assigned_link.interval_end = num_slot
+        #     assigned_link.tx_power = self.tx_power
+        #     start_offset += (num_slot + 1)
+        #
+        #     if start_offset > beacon_length:
+        #         break
+        #
+        #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
         self.mac.mlme_data_request(tx_packet)
 
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
-        # event.callbacks.append(self.send_beacon)
+        event.callbacks.append(self.send_beacon)
         event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
@@ -224,3 +253,8 @@ class BanSSCS:
 
     def get_data(self):
         return self.packet_list
+
+
+    def update_beacon_interval(self):
+        # 현재 페이즈의 길이를 구해 비콘 주기에 대입(s -> s)
+        self.beacon_interval = self.movement_info.phase_duration[self.mobility_helper.current_phase.value]
