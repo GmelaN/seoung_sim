@@ -15,8 +15,6 @@ from ban.base.logging.log import SeoungSimLogger
 from ban.base.tracer import Tracer
 
 
-
-
 @dataclass(frozen=True)
 class State:
     phase: MovementPhase
@@ -34,9 +32,9 @@ class QLearningTrainer:
             movement_phases: MovementPhase,
             mobility_helper: MobilityHelper,
             tracers: list[Tracer],
-            learning_rate: float = 0.5,
-            discount_factor: float = 0.9,
-            exploration_rate: float = 0.7,
+            learning_rate: float = 0.25,
+            discount_factor: float = 0.6,
+            exploration_rate: float = 0.5,
     ):
         self.sscs = sscs
         self.node_count: int = node_count
@@ -69,7 +67,10 @@ class QLearningTrainer:
         else:
             action = self.action_space[np.argmax(self.q_table[current_state])]
 
-        QLearningTrainer.logger.log(msg=f"action is: {action}")
+        QLearningTrainer.logger.log(
+            sim_time=self.sscs.env.now,
+            msg=f"action is: {action}"
+        )
         return action
 
 
@@ -84,6 +85,12 @@ class QLearningTrainer:
 
 
     def update_q_table(self, current_state: State, action: int, reward: float, next_state: State):
+        QLearningTrainer.logger.log(
+            sim_time=self.sscs.env.now,
+            msg=f"COORDINATOR: updating Q-table",
+            level=logging.INFO
+        )
+
         # 다음 행동 중 가장 가치가 큰 행동
         best_next_action = np.argmax(self.q_table[next_state])
 
@@ -97,12 +104,18 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1
+            return -1 * self.get_node_priority(action)
 
         return self.get_throughput(action) * self.get_node_priority(action)
 
 
     def train(self, iterations: int = 10):
+        QLearningTrainer.logger.log(
+            sim_time=self.sscs.env.now,
+            msg=f"COORDINATOR: training",
+            level=logging.INFO
+        )
+
         for _ in range(iterations):
             current_state = State(self.detect_movement_phase(), 0)
 
@@ -110,16 +123,13 @@ class QLearningTrainer:
                 action = self.choose_action(current_state)                  # node index(will allocate to current slot)
                 next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
                 reward = self.calculate_reward(action)                      # reward for taking that action
+
                 self.update_q_table(current_state, action, reward, next_state)
+
                 current_state = next_state
 
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
-        # TODO: 스루풋 초기화 시점
-        # self.sscs.reset_throughput()
-        for tracer in self.tracers:
-            tracer.reset()
-
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
 
@@ -137,6 +147,14 @@ class QLearningTrainer:
         # 타임 슬롯이 모두 빈 경우 - 기본값으로 설정
         if max(time_slots) == -1:
             time_slots = [i + 1 for i in range(self.time_slots)]
+            QLearningTrainer.logger.log(
+                sim_time=self.sscs.env.now,
+                msg=f"COORDINATOR: falling back to default time slot allocation because generated time slots is empty.",
+                level=logging.WARN
+            )
+
+        # TODO: 스루풋 초기화 시점
+        self.reset_throughput()
 
         return time_slots
 
@@ -146,7 +164,7 @@ class QLearningTrainer:
 
 
     def get_throughput(self, node_id: int) -> float:
-        print(self.tracers[node_id].get_throughput())
+        # print(self.tracers[node_id].get_throughput())
         # TODO: 정확한 스루풋 반환
         return self.tracers[node_id].get_throughput()
         # return self.sscs.get_throughput()
@@ -154,3 +172,10 @@ class QLearningTrainer:
 
     def get_node_priority(self, node_id: int) -> int:
         return self.sscs.get_priority(node_id)
+
+
+    def reset_throughput(self) -> None:
+        for tracer in self.tracers:
+            tracer.reset()
+
+        return
