@@ -730,15 +730,30 @@ class BanMac:
         pass
 
 
-    def show_result(self, event:simpy.Environment | None = None, pbar: tqdm.tqdm | None = None, delay_interval: int = 1):
-        if pbar is None:
+    def show_result(self, event:simpy.Environment | None = None, pbar: tqdm.tqdm | None = None, delay_interval: int = 1, total: bool = False):
+        if pbar is None and total is False:
             output = (
                 f"NODE ID: {self.get_mac_params().node_id}\t"
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\t"
+                f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
                 f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
+
             )
             print(output + " " * (80 - len(output)), end='\r')
+            return
+
+        if total is True:
+            output = (
+                f"NODE ID: {self.get_mac_params().node_id}\t"
+                f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
+                f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
+                f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
+                f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
+
+            )
+            print(output + " " * (80 - len(output)), end='\r')
+            return
 
         else:
             pbar.set_postfix(

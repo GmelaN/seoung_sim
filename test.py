@@ -32,7 +32,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i for i in range(NODE_COUNT)),
+        node_priority=tuple((i * 0.1) for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -84,28 +84,33 @@ for i, position in enumerate(mobility_positions):
     agent.m_sscs.set_node_list(i)
 
 
-def send_data(device: Node, delay: float):
-    packet: Packet = Packet(packet_size=10)
-    mac_header = BanMacHeader()
-    mac_header.set_tx_params(ban_id=0, sender_id=1, recipient_id=0)
-
-    packet.set_mac_header_(mac_header=mac_header)
-
-    event = device.env.event()
-    event._ok = True
-    event.callbacks.append(
-        lambda _: device.m_sscs.send_data(tx_packet=packet)
-    )
-
-    device.env.schedule(event, priority=0, delay=delay)
+# def send_data(device: Node, delay: float):
+#     packet: Packet = Packet(packet_size=10)
+#     mac_header = BanMacHeader()
+#     mac_header.set_tx_params(ban_id=0, sender_id=device, recipient_id=0)
+#
+#     packet.set_mac_header_(mac_header=mac_header)
+#
+#     event = device.env.event()
+#     event._ok = True
+#     event.callbacks.append(
+#         lambda _: device.m_sscs.send_data(tx_packet=packet)
+#     )
+#
+#     device.env.schedule(event, priority=0, delay=delay)
 
 
 # Generate events (generate packet events)
 agent.m_sscs.send_beacon(event=env)
 
-delay = 0.1
+delay = 0.01
 for node in nodes:
-    send_data(node, delay)
+    packet: Packet = Packet(packet_size=20)
+    mac_header = BanMacHeader()
+    mac_header.set_tx_params(ban_id=0, sender_id=node.m_tx_params.node_id, recipient_id=COORDINATOR_ID)
+
+    packet.set_mac_header_(mac_header=mac_header)
+    node.m_sscs.send_data(packet)
 
 
 # Generate events (generate mobility)
@@ -117,26 +122,43 @@ env.schedule(event, priority=NORMAL, delay=0)
 
 
 # Set the simulation run time
-run_time = 50  # seconds
+run_time = 1000  # seconds
 
 # Print statistical results
-event = env.event()
-event._ok = True
-for node in nodes:
-    event.callbacks.append(node.m_mac.show_result)
-env.schedule(event, priority=NORMAL, delay=10)
+# event = env.event()
+# event._ok = True
+# for node in nodes:
+#     event.callbacks.append(node.m_mac.show_result)
+# env.schedule(event, priority=NORMAL, delay=10)
 
 
-pbar = tqdm(total=run_time)
+pbar = tqdm(total=run_time - 1)
 
-def update_pbar(ev):
+def update_pbar(ev=None):
     event = env.event()
     event._ok = True
     event.callbacks.append(lambda _: pbar.update(1))
     event.callbacks.append(update_pbar)
     env.schedule(event, priority=NORMAL, delay=1)
 
-update_pbar(env)
+update_pbar()
 
 # Run simulation
+
+# Print statistical results
+event = env.event()
+event._ok = True
+
+# for node in range(len(nodes)):
+#     event.callbacks.append(lambda _: nodes[node].m_mac.show_result(total=True))
+
+event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
+
+env.schedule(event, priority=NORMAL, delay=run_time - 0.00001)
+
 env.run(until=run_time)

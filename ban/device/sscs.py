@@ -70,7 +70,7 @@ class BanSSCS:
             coordinator: bool = False,
             mobility_helper: MobilityHelper | None = None,
             node_count: int | None = None,
-            node_priority: tuple[int, ...] | None = None,
+            node_priority: tuple[float, ...] | None = None,
             tracers: list[Tracer] | None = None
     ):
         self.env: simpy.Environment | None = None
@@ -144,6 +144,9 @@ class BanSSCS:
                 msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
                 level=logging.INFO
             )
+
+            self.q_learning_trainer.train(1)
+
 
         self.packet_list.append(rx_packet)
 
@@ -220,30 +223,13 @@ class BanSSCS:
             if start_offset > beacon_length:
                 break
 
-
-        # 비콘 정보 담기
-        # for i in range(num_slot):
-        #     assigned_link = AssignedLinkElement()
-        #
-        #     # TODO: 타임 슬롯 할당 순서 받아오기
-        #     assigned_link.allocation_id = i
-        #     assigned_link.interval_start = start_offset
-        #     assigned_link.interval_end = num_slot
-        #     assigned_link.tx_power = self.tx_power
-        #     start_offset += (num_slot + 1)
-        #
-        #     if start_offset > beacon_length:
-        #         break
-        #
-        #     tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
-
         self.mac.mlme_data_request(tx_packet)
 
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         event.callbacks.append(self.send_beacon)
-        event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
+        # event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
@@ -268,7 +254,7 @@ class BanSSCS:
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.env.schedule(event, priority=NORMAL, delay=0.1)
+        self.env.schedule(event, priority=NORMAL, delay=0.05)
 
 
     def get_data(self):
