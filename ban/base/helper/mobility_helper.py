@@ -6,7 +6,7 @@ import random
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 
-MOVEMENT_CYCLE = 0.1 + 0.05                # seconds
+MOVEMENT_CYCLE = 0.5                # seconds
 RANGE = 0.1
 
 
@@ -22,7 +22,7 @@ class MovementInfo:
     phases: tuple[MovementPhase] = tuple(MovementPhase)
 
     # 각 페이즈의 기간 정보 -> 한 전체 주기의 정보도 알 수 있음 (seconds)
-    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
+    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE + random.random() for _ in range(len(phases)))
 
 
 class MobilityHelper:
