@@ -32,7 +32,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple((i * 0.1) for i in range(NODE_COUNT)),
+        node_priority=tuple(i for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
