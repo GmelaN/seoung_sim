@@ -34,7 +34,7 @@ class QLearningTrainer:
             tracers: list[Tracer],
             learning_rate: float = 0.25,
             discount_factor: float = 0.6,
-            exploration_rate: float = 0.5,
+            exploration_rate: float = 0.3,
     ):
         self.sscs = sscs
         self.node_count: int = node_count
@@ -51,7 +51,13 @@ class QLearningTrainer:
         # -1: unallocated
         self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))
 
-        self.q_table = defaultdict(lambda: np.zeros(node_count))
+        # "할당하지 않음" 포함
+        self.q_table = defaultdict(lambda: np.zeros(node_count + 1))\
+
+        # initalize q_table(for first slot allocation)
+        for phase in self.mobility_helper.phase_info.phases:
+            for node in range(1, node_count + 1):
+                self.q_table[State(phase, node)][node] = np.float32(0.001)
 
 
     def choose_action(self, current_state: State) -> int:
@@ -88,7 +94,7 @@ class QLearningTrainer:
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: updating Q-table",
-            level=logging.INFO
+            level=logging.DEBUG
         )
 
         # 다음 행동 중 가장 가치가 큰 행동
@@ -113,7 +119,7 @@ class QLearningTrainer:
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: training",
-            level=logging.INFO
+            level=logging.DEBUG
         )
 
         for _ in range(iterations):
@@ -145,13 +151,13 @@ class QLearningTrainer:
             state = State(phase=state.phase, slot=state.slot + 1)
 
         # 타임 슬롯이 모두 빈 경우 - 기본값으로 설정
-        if max(time_slots) == -1:
-            time_slots = [i + 1 for i in range(self.time_slots)]
-            QLearningTrainer.logger.log(
-                sim_time=self.sscs.env.now,
-                msg=f"COORDINATOR: falling back to default time slot allocation because generated time slots is empty.",
-                level=logging.WARN
-            )
+        # if max(time_slots) == -1:
+        #     time_slots = [i + 1 for i in range(self.time_slots)]
+        #     QLearningTrainer.logger.log(
+        #         sim_time=self.sscs.env.now,
+        #         msg=f"COORDINATOR: falling back to default time slot allocation because generated time slots is empty.",
+        #         level=logging.WARN
+        #     )
 
         # TODO: 스루풋 초기화 시점
         self.reset_throughput()
