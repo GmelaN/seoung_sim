@@ -41,17 +41,6 @@ class BanDataConfirmStatus(Enum):
 
 
 @dataclass
-class DqnStatusInfo:
-    node_id = None
-    current_state = None
-    current_action = None
-    reward = None
-    next_state = None
-    done = None
-    steps = None
-
-
-@dataclass
 class BanTxParams:
     ban_id: int | None = None
     node_id: int | None = None
@@ -191,7 +180,10 @@ class BanSSCS:
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=
-            f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon interval is: {self.beacon_interval}",
+            f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon interval is: {self.beacon_interval}, "
+            f"current movement phase is: "
+            f"{self.mobility_helper.phase_info.phase_duration[self.mobility_helper.current_phase.value]}",
+            level=logging.DEBUG
         )
 
         # beacon_length는 ms 단위 -> beacon_interval은 s 단위이므로 1000을 곱함
@@ -201,11 +193,13 @@ class BanSSCS:
 
         '''Q-learning: allocate time slot by strategy'''
         slots = self.q_learning_trainer.get_time_slots(self.q_learning_trainer.detect_movement_phase())
+        # slots = [(i + 1) for i in range(num_slot)]
 
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=
             f"{self.__class__.__name__}[{self.tx_params.node_id}] time slot configuration is: {slots}",
+            level=logging.INFO
         )
 
         for slot in slots:
@@ -229,7 +223,6 @@ class BanSSCS:
         event._ok = True
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         event.callbacks.append(self.send_beacon)
-        # event.callbacks.append(lambda _: self.send_beacon(event=None, pbar=pbar))
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
