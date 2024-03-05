@@ -76,6 +76,7 @@ class BanPhyPpduHeaderSymbolNumber:         # PPDU: Physical layer Protocol Data
     shr_sfd: float | None = None            # PSDU: T_PSDU
     phr: float | None = None                # Synchronization header: T_SHR
 
+NOISE = -10
 
 class BanPhy:
     # the turnaround time for switching the transceiver from RX to TX or vice versa
@@ -87,7 +88,7 @@ class BanPhy:
         self.__env = None
         self.__rx_sensitivity = None
         self.__tx_power = None
-        self.__noise = -10  # dB
+        self.__noise = NOISE  # dB
         self.__error_model = None
         self.__channel = None
         self.__mac = None
@@ -99,7 +100,6 @@ class BanPhy:
         self.__rx_pkt = None
         self.__phy_option = BanPhyOption.IEEE_802_15_6_INVALID_PHY_OPTION
 
-        # TODO: BanPhyDataAndSymbolRates의 각 행은 BanPhyOption의 각 옵션별 항목인지?
         self.__data_symbol_rates: Tuple[BanPhyDataAndSymbolRates, ...] = tuple(
             BanPhyDataAndSymbolRates(i, j)
             for i, j in (

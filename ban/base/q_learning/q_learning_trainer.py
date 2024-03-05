@@ -32,9 +32,9 @@ class QLearningTrainer:
             movement_phases: MovementPhase,
             mobility_helper: MobilityHelper,
             tracers: list[Tracer],
-            learning_rate: float = 0.25,
-            discount_factor: float = 0.6,
-            exploration_rate: float = 0.3,
+            learning_rate: float = 0.2,
+            discount_factor: float = 0.9,
+            exploration_rate: float = 0.5,
     ):
         self.sscs = sscs
         self.node_count: int = node_count
@@ -115,24 +115,20 @@ class QLearningTrainer:
         return self.get_throughput(action) * self.get_node_priority(action)
 
 
-    def train(self, iterations: int = 10):
+    def train(self, time_slot_index: int):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: training",
             level=logging.DEBUG
         )
 
-        for _ in range(iterations):
-            current_state = State(self.detect_movement_phase(), 0)
+        current_state = State(self.detect_movement_phase(), time_slot_index)
 
-            for _ in range(self.time_slots):
-                action = self.choose_action(current_state)                  # node index(will allocate to current slot)
-                next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
-                reward = self.calculate_reward(action)                      # reward for taking that action
+        action = self.choose_action(current_state)                  # node index(will allocate to current slot)
+        next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
+        reward = self.calculate_reward(action)                      # reward for taking that action
 
-                self.update_q_table(current_state, action, reward, next_state)
-
-                current_state = next_state
+        self.update_q_table(current_state, action, reward, next_state)
 
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
@@ -185,3 +181,12 @@ class QLearningTrainer:
             tracer.reset()
 
         return
+
+    def print_throughput(self):
+        throughputs = tuple(f"node {i+1}: {len(self.tracers[i].success_tx_packet)} / {len(self.tracers[i].tx_packet)}" for i in range(len(self.tracers)))
+
+        QLearningTrainer.logger.log(
+            sim_time=self.sscs.env.now,
+            msg=", ".join(throughputs),
+            level=logging.INFO
+        )

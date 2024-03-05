@@ -12,7 +12,8 @@ from ban.base.packet import Packet
 from ban.base.tracer import Tracer
 from ban.base.utils import microseconds
 from ban.base.channel.csma_ca import CsmaCa
-from ban.device.mac_header import BanFrameType, BanFrameSubType, BanMacHeader, Beacon, IAck, Data, BanRecipientType
+from ban.device.mac_header import BanFrameType, BanFrameSubType, BanMacHeader, Beacon, IAck, Data, BanRecipientType, \
+    AssignedLinkElement
 from ban.device.phy import BanPhyPibAttributes, BanPhy, BanPibAttributeIdentifier, BanPhyTRxState
 from ban.device.sscs import BanTxParams, BanSSCS, BanTxOption, BanDataConfirmStatus
 from ban.device.mac_header import BanRecipientType
@@ -63,6 +64,8 @@ class BanMac:
         self.__tx_power = 0
         self.__initial_energy = 1
 
+        self.time_slot_index = None
+
 
 
     def set_env(self, env: simpy.Environment):
@@ -89,14 +92,25 @@ class BanMac:
     def set_csma_ca(self, csma_ca: CsmaCa):
         self.__csma_ca = csma_ca
 
-    def set_mac_header(self, packet: Packet, frame_type: BanFrameType, frame_subtype: BanFrameSubType, tx_params: BanTxParams):
+    def set_mac_header(
+            self,
+            packet: Packet,
+            frame_type: BanFrameType,
+            frame_subtype: BanFrameSubType,
+            tx_params: BanTxParams
+    ):
         assert frame_type is not None
         assert frame_subtype is not None
         assert tx_params is not None
         assert tx_params.node_id is not None and tx_params.ban_id is not None and tx_params.recipient_id is not None
 
-        # TODO: setter와 params 대입 메서드 분리
-        packet.get_mac_header().set_tx_params(tx_params.ban_id, tx_params.node_id, tx_params.recipient_id)
+
+        packet.get_mac_header().set_tx_params(
+            tx_params.ban_id,
+            tx_params.node_id,
+            tx_params.recipient_id,
+            self.time_slot_index if self.time_slot_index is not None else None
+        )
         packet.get_mac_header().set_frame_control(frame_type, frame_subtype, tx_params.tx_option, tx_params.seq_num)
 
         if frame_subtype == BanFrameSubType.WBAN_MANAGEMENT_BEACON:
@@ -195,6 +209,8 @@ class BanMac:
         #     tx_params
         # )
 
+        tx_params.time_slot_info = self.time_slot_index
+
         self.set_mac_header(
             packet=tx_packet,
             tx_params=tx_params,
@@ -203,6 +219,7 @@ class BanMac:
         )
 
         recipient_id = tx_packet.get_mac_header().recipient_id
+
         assert recipient_id is not None
 
         broadcast = "BROADCAST"
@@ -211,6 +228,7 @@ class BanMac:
             sim_time=self.get_env().now,
             msg=
             f"{self.__class__.__name__}[{self.__mac_params.node_id}] mcps_data_request: receiving MCPS-DATA.request, "
+            + f"time slot information: {tx_packet.get_mac_header().time_slot_index}, "
             + f"packet size: {tx_packet.get_size()}, "
             + f"from : {self.__mac_params.node_id}, "
             + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
@@ -306,6 +324,7 @@ class BanMac:
             sim_time=self.get_env().now,
             msg=
             f"{self.__class__.__name__}[{self.__mac_params.node_id}] pd_data_indication: processing PD-DATA.indication,"
+            + f"time slot index: {self.time_slot_index}"
             + f" rx_packet size: {rx_packet.get_size()}, "
             + f"packet type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}, "
             + f"from: {rx_packet.get_mac_header().sender_id}, "
@@ -315,7 +334,6 @@ class BanMac:
         rx_header: BanMacHeader = rx_packet.get_mac_header()
         accept_frame: bool = True                               # 수신된 패킷의 승인 여부
 
-        # TODO: if 구문 리팩토링
         # * accept_frame = false인 경우 무조건 return 때리면 어떤가
 
         # 수신된 패킷의 mac 헤더를 뜯어서 내가 무슨 처리를 해야 하는지 알아 보자.
@@ -360,7 +378,7 @@ class BanMac:
 
                 # 수신한 비콘 신호의 남은 할당 시간 계산
                 self.__beacon_rx_time = self.get_env().now
-                assigned_link = rx_packet.get_frame_body().get_assigned_link_info(self.__mac_params.node_id)
+                assigned_link: AssignedLinkElement = rx_packet.get_frame_body().get_assigned_link_info(self.__mac_params.node_id)
 
                 BanMac.logger.log(
                     sim_time=self.get_env().now,
@@ -394,13 +412,17 @@ class BanMac:
 
                     self.__alloc_start_time = tx_start_time
                     self.__alloc_end_time = tx_timeout
+                    self.time_slot_index = assigned_link.time_slot_index
+
 
                     BanMac.logger.log(
                         sim_time=self.get_env().now,
-                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] SET BEACON PARAMETERS TO: alloc_start_time: {self.__alloc_start_time}, alloc_end_time: {self.__alloc_end_time}",
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] "
+                            f"time slot index: {self.time_slot_index} "
+                            f"SET BEACON PARAMETERS TO: alloc_start_time: {self.__alloc_start_time:.6f}, "
+                            f"alloc_end_time: {self.__alloc_end_time:.6f}",
                         level=logging.INFO
                     )
-
 
                     event = self.__env.event()
                     event._ok = True
@@ -446,7 +468,6 @@ class BanMac:
                 # finish the transmission and notify the upper layer
                 tx_header = self.__tx_packet.get_mac_header()
 
-                # TODO: sequence number는 무엇인가
                 if rx_header.get_frame_control().sequence_number == tx_header.get_frame_control().sequence_number:
                     # if the packet that just sent before is a data frame
                     if tx_header.get_frame_control().frame_type == BanFrameType.IEEE_802_15_6_MAC_DATA:
@@ -457,7 +478,6 @@ class BanMac:
                         self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_SUCCESS)
 
                         # Prepare the next transmission
-                        # TODO: MAC 상태 초기화 메서드로 분리
                         self.__tx_packet = None
                         self.__prev_tx_status = True    # mark the current Tx result as a success
                         self.__change_mac_state(BanMacState.MAC_IDLE)
@@ -533,7 +553,15 @@ class BanMac:
 
                 BanMac.logger.log(
                     sim_time=self.get_env().now,
-                    msg=f"BanMac [{self.get_mac_params().node_id}]alloc_start_time: {self.__alloc_start_time}, alloc_end_time: {self.__alloc_end_time}, beacon_rx_time: {self.__beacon_rx_time} slot_duration:{slot_duration}, reamin_alloc_time:{remain_alloc_time}, expected_tx_time: {expected_tx_time}, guard_time: {guard_time}, ack_rx_time: {ack_rx_time}",
+                    msg=f"BanMac [{self.get_mac_params().node_id}] "
+                        f"alloc_start_time: {self.__alloc_start_time: .6f}, "
+                        f"alloc_end_time: {self.__alloc_end_time: .6f}, "
+                        f"beacon_rx_time: {self.__beacon_rx_time: .6f}, "
+                        f"slot_duration:{slot_duration: .6f}, "
+                        f"reamin_alloc_time:{remain_alloc_time: .6f}, "
+                        f"expected_tx_time: {expected_tx_time: .6f}, "
+                        f"guard_time: {guard_time: .6f}, "
+                        f"ack_rx_time: {ack_rx_time: .6f}, ",
                     level=logging.INFO
                 )
 

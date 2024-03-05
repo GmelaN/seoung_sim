@@ -40,6 +40,12 @@ class BanDataConfirmStatus(Enum):
     IEEE_802_15_6_EXCEED_ALLOCATION_INTERVAL = 12
 
 
+@dataclass(frozen=True)
+class TimeSlotInfo:
+    start_time: float
+    end_time: float
+
+
 @dataclass
 class BanTxParams:
     ban_id: int | None = None
@@ -47,12 +53,14 @@ class BanTxParams:
     recipient_id: int | None = None
     seq_num: int | None = None
     tx_option: BanTxOption | None = None
+    time_slot_info: int | None = None
 
 
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
     NUM_SLOTS = 10
+    SLOT_DURATION = 5 # default is 1
 
     def __init__(
             self,
@@ -69,6 +77,7 @@ class BanSSCS:
         self.tx_params: BanTxParams = BanTxParams()
         self.tx_power: float = 0   # dBm
 
+
         if coordinator:
             self.q_learning_trainer = QLearningTrainer(
                 mobility_helper=mobility_helper,
@@ -78,6 +87,8 @@ class BanSSCS:
                 time_slots=BanSSCS.NUM_SLOTS,
                 tracers=tracers
             )
+
+            self.current_time_slot_index: int = 0
 
         self.logger = logging.getLogger("BAN-SSCS")
 
@@ -134,8 +145,7 @@ class BanSSCS:
                 level=logging.INFO
             )
 
-            self.q_learning_trainer.train(1)
-
+            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index)
 
         self.packet_list.append(rx_packet)
 
@@ -183,11 +193,15 @@ class BanSSCS:
             f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon interval is: {self.beacon_interval}, "
             f"current movement phase is: "
             f"{self.mobility_helper.phase_info.phase_duration[self.mobility_helper.current_phase.value]}",
-            level=logging.DEBUG
+            level=logging.INFO
         )
 
         # beacon_length는 ms 단위 -> beacon_interval은 s 단위이므로 1000을 곱함
         beacon_length = self.beacon_interval * 1000  # ms
+        # TODO: 비콘 interval 기간과 비콘 신호 길이 분리
+
+        print(beacon_length / BanSSCS.NUM_SLOTS) # ms
+
         start_offset = 0
         num_slot = BanSSCS.NUM_SLOTS  # for test. the number of allocation slots
 
@@ -202,20 +216,23 @@ class BanSSCS:
             level=logging.INFO
         )
 
-        for slot in slots:
+        for i, slot in enumerate(slots):
             if slot != -1:
                 assigned_link = AssignedLinkElement()
                 assigned_link.allocation_id = slot
                 assigned_link.interval_start = start_offset
                 assigned_link.interval_end = num_slot
                 assigned_link.tx_power = self.tx_power
+                assigned_link.time_slot_index = i
 
                 tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
-            start_offset += (num_slot + 1)
+            start_offset += (num_slot + BanSSCS.SLOT_DURATION)
 
             if start_offset > beacon_length:
                 break
+
+        self.beacon_start_time = self.env.now
 
         self.mac.mlme_data_request(tx_packet)
 
@@ -227,11 +244,14 @@ class BanSSCS:
 
 
     def beacon_interval_timeout(self, event):
+        self.q_learning_trainer.print_throughput()
+
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon signal interval timeout triggered.",
             level=logging.DEBUG
         )
+
 
 
     def send_data(self, tx_packet: Packet):

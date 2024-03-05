@@ -4,7 +4,7 @@ from simpy.core import SimTime
 
 
 class SeoungSimLogger:
-    def __init__(self, logger_name: str, level: int=logging.DEBUG):
+    def __init__(self, logger_name: str, level: int=logging.INFO):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(level)
         self.level = level
@@ -29,7 +29,9 @@ class SeoungSimLogger:
 
 
     def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
-        # return
+        if level is None or level == logging.DEBUG:
+            return
+
         full_message = f"[SimTime: {sim_time:.10f}] {msg}"
 
         if len(newline) != 0:

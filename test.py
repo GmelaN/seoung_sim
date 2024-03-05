@@ -104,13 +104,21 @@ for i, position in enumerate(mobility_positions):
 agent.m_sscs.send_beacon(event=env)
 
 delay = 0.01
-for node in nodes:
-    packet: Packet = Packet(packet_size=20)
-    mac_header = BanMacHeader()
-    mac_header.set_tx_params(ban_id=0, sender_id=node.m_tx_params.node_id, recipient_id=COORDINATOR_ID)
 
-    packet.set_mac_header_(mac_header=mac_header)
-    node.m_sscs.send_data(packet)
+def send_data(env):
+    for node in nodes:
+        packet: Packet = Packet(packet_size=20)
+        mac_header = BanMacHeader()
+        mac_header.set_tx_params(ban_id=0, sender_id=node.m_tx_params.node_id, recipient_id=COORDINATOR_ID)
+
+        packet.set_mac_header_(mac_header=mac_header)
+        node.m_sscs.send_data(packet)
+
+event = env.event()
+event._ok = True
+event.callbacks.append(send_data)
+env.schedule(event, priority=NORMAL, delay=delay)
+
 
 
 # Generate events (generate mobility)

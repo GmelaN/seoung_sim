@@ -1,8 +1,10 @@
 import dataclasses
 import enum
+import logging
 import math
 import random
 
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 
@@ -22,10 +24,12 @@ class MovementInfo:
     phases: tuple[MovementPhase] = tuple(MovementPhase)
 
     # 각 페이즈의 기간 정보 -> 한 전체 주기의 정보도 알 수 있음 (seconds)
-    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE + random.random() for _ in range(len(phases)))
+    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
 
 
 class MobilityHelper:
+    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+
     def __init__(self, env):
         self.env = env
 
@@ -83,7 +87,15 @@ class MobilityHelper:
         self.update_position()
 
         # 현재 페이즈 정보 업데이트
-        self.current_phase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
+        next_phase: MovementPhase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
+
+        MobilityHelper.logger.log(
+            sim_time=self.env.now,
+            msg=f"Mobility movement phase set from: {self.current_phase} to: {next_phase}",
+            level=logging.INFO
+        )
+
+        self.current_phase = next_phase
 
         event = self.env.event()
         event._ok = True
