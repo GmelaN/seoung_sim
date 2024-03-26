@@ -75,7 +75,8 @@ class QLearningTrainer:
 
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"action is: {action}"
+            msg=f"action is: {action}",
+            level=logging.DEBUG
         )
         return action
 
@@ -93,7 +94,7 @@ class QLearningTrainer:
     def update_q_table(self, current_state: State, action: int, reward: float, next_state: State):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"COORDINATOR: updating Q-table",
+            msg=f"COORDINATOR: updating Q-table, reward: {reward}",
             level=logging.DEBUG
         )
 

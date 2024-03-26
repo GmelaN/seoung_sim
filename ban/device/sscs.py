@@ -60,7 +60,7 @@ class BanTxParams:
 class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
     NUM_SLOTS = 10
-    SLOT_DURATION = 5 # default is 1
+    SLOT_DURATION = 1 # default is 1
 
     def __init__(
             self,
@@ -200,7 +200,6 @@ class BanSSCS:
         beacon_length = self.beacon_interval * 1000  # ms
         # TODO: 비콘 interval 기간과 비콘 신호 길이 분리
 
-        print(beacon_length / BanSSCS.NUM_SLOTS) # ms
 
         start_offset = 0
         num_slot = BanSSCS.NUM_SLOTS  # for test. the number of allocation slots
@@ -267,7 +266,7 @@ class BanSSCS:
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.env.schedule(event, priority=NORMAL, delay=0.05)
+        self.env.schedule(event, priority=NORMAL, delay=0.4)
 
 
     def get_data(self):

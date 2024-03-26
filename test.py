@@ -25,14 +25,14 @@ prop_delay_model = PropDelayModel()
 channel.set_loss_model(prop_loss_model)
 channel.set_delay_model(prop_delay_model)
 
-NODE_COUNT = 6
+NODE_COUNT = 8 # MAX: 8
 COORDINATOR_ID = 0
 
 def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i for i in range(NODE_COUNT)),
+        node_priority=tuple(i+1 for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -82,23 +82,6 @@ for i, position in enumerate(mobility_positions):
     nodes[i].get_mac().set_mac_params(BanTxParams(0, i + 1, COORDINATOR_ID))
 
     agent.m_sscs.set_node_list(i)
-
-
-# def send_data(device: Node, delay: float):
-#     packet: Packet = Packet(packet_size=10)
-#     mac_header = BanMacHeader()
-#     mac_header.set_tx_params(ban_id=0, sender_id=device, recipient_id=0)
-#
-#     packet.set_mac_header_(mac_header=mac_header)
-#
-#     event = device.env.event()
-#     event._ok = True
-#     event.callbacks.append(
-#         lambda _: device.m_sscs.send_data(tx_packet=packet)
-#     )
-#
-#     device.env.schedule(event, priority=0, delay=delay)
-
 
 # Generate events (generate packet events)
 agent.m_sscs.send_beacon(event=env)

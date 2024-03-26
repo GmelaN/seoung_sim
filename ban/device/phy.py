@@ -357,6 +357,7 @@ class BanPhy:
             newline="\n"
         )
 
+        drop_reason = ""
         if self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_RX_ON:
             # If the 10*log10 (sinr) > -5, then receive the packet, otherwise drop the packet
             self.change_trx_state(BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_RX)
@@ -364,13 +365,14 @@ class BanPhy:
             if self.__rx_pkt.get_spectrum_tx_params().tx_power + self.__noise >= self.__rx_sensitivity:
                 self.__rx_pkt.success = True
             else:
+                drop_reason = "low TX power"
                 self.__rx_pkt.success = False
             # print('Rx power (dBm):', self.__rx_pkt.get_spectrum_tx_params().tx_power + self.__noise)
         elif self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_RX:
-            # print('Packet collision at (NID:%d)' % self.__mac.__mac_params.node_id, self.__trx_state)
+            drop_reason = "current PHY state is BUSY_TX"
             self.__rx_pkt.success = False
         else:
-            # print('Transceiver not in Rx state:', self.__trx_state)
+            drop_reason = "unknown"
             self.__rx_pkt.success = False
 
         # Update peak power if CCA is in progress
@@ -382,6 +384,9 @@ class BanPhy:
         BanPhy.logger.log(
             sim_time=self.get_env().now,
             msg=f"\tRX will end at: {self.get_env().now + rx_duration:.10f}"
+            "" if len(drop_reason) == 0 else f"packet will dropped due to: {drop_reason}"
+            ,
+            level=logging.DEBUG
         )
 
         event = self.__env.event()
