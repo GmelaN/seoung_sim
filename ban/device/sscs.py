@@ -146,7 +146,7 @@ class BanSSCS:
                 level=logging.INFO
             )
 
-            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index)
+            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
 
         self.packet_list.append(rx_packet)
 
