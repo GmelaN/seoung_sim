@@ -25,6 +25,7 @@ class BodyPosition(Enum):
     LEFT_ANKLE = 12
     RIGHT_KNEE = 13
     RIGHT_ANKLE = 14
+    BODY = 15
 
 
 class MobilityModel:

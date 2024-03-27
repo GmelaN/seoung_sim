@@ -9,7 +9,7 @@ from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 
 MOVEMENT_CYCLE = 0.5                # seconds
-RANGE = 0.1
+RANGE = 0
 
 
 class MovementPhase(enum.Enum):
@@ -48,6 +48,7 @@ class MobilityHelper:
 
         # static position
         self.head = Vector(1.1, 1.8, 1)                 # x, y, z
+        self.body = Vector(1.1, 1.3, 1)
         self.left_upper_torso = Vector(1, 1.3, 1)
         self.left_lower_torso = Vector(1, 1, 1)         # base position
         self.right_upper_torso = Vector(1.2, 1.3, 1)
@@ -256,6 +257,8 @@ class MobilityHelper:
         for mob_list in self.mobility_list:
             if mob_list.get_body_position() == BodyPosition.HEAD:
                 mob_list.set_position(self.head)
+            elif mob_list.get_body_position == BodyPosition.BODY:
+                mob_list.set_position(self.body)
             elif mob_list.get_body_position() == BodyPosition.LEFT_UPPER_TORSO:
                 mob_list.set_position(self.left_upper_torso)
             elif mob_list.get_body_position() == BodyPosition.LEFT_LOWER_TORSO:
