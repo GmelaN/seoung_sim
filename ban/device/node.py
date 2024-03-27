@@ -38,7 +38,6 @@ class Node:
         return self.m_phy.get_channel()
 
     def generate_data(self, event):
-        # TODO: Generate a data packet based on a node's sampling rate
         self.m_tx_pkt = Packet(500)
         mac_header = BanMacHeader()
         mac_header.set_tx_params(self.m_tx_params.ban_id, self.m_tx_params.node_id, self.m_tx_params.recipient_id)
