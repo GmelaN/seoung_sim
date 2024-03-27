@@ -12,6 +12,7 @@ from ban.base.packet import Packet
 from ban.base.tracer import Tracer
 from ban.base.utils import microseconds
 from ban.base.channel.csma_ca import CsmaCa
+from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanFrameType, BanFrameSubType, BanMacHeader, Beacon, IAck, Data, BanRecipientType, \
     AssignedLinkElement
 from ban.device.phy import BanPhyPibAttributes, BanPhy, BanPibAttributeIdentifier, BanPhyTRxState
@@ -699,7 +700,7 @@ class BanMac:
                 + f"sending ACK packet..."
         )
 
-        ack_packet = Packet(10)
+        ack_packet = Packet(packet_size=int(JSONConfig.get_config("packet_size")))
         tx_params = BanTxParams()
         tx_params.ban_id = self.__mac_params.ban_id
         tx_params.node_id = self.__mac_params.node_id

@@ -5,6 +5,7 @@ import simpy
 from ban.base.channel.channel import Channel
 from ban.base.channel.csma_ca import CsmaCa
 from ban.base.packet import Packet
+from ban.config.JSONConfig import JSONConfig
 from ban.device.mac import BanMac
 from ban.device.mac_header import BanMacHeader
 from ban.device.phy import BanPhy
@@ -38,7 +39,9 @@ class Node:
         return self.m_phy.get_channel()
 
     def generate_data(self, event):
-        self.m_tx_pkt = Packet(500)
+        packet_size = int(JSONConfig.get_config("packet_size"))
+        self.m_tx_pkt = Packet(packet_size)
+
         mac_header = BanMacHeader()
         mac_header.set_tx_params(self.m_tx_params.ban_id, self.m_tx_params.node_id, self.m_tx_params.recipient_id)
         self.m_tx_pkt.set_mac_header_(mac_header=mac_header)

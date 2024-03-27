@@ -1,9 +1,19 @@
 from ban.base.channel.base_channel import SpectrumSignalParameters
+from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanFrameSubType, BanMacHeader, Data, Beacon, IAck, BanFrameType
 
 class Packet:
     def __init__(self, packet_size: int):
-        self.__size = packet_size
+
+        # read "packet_size" value from JSON config
+        packet_size_from_config: int | str = JSONConfig.get_config("packet_size")
+
+        if packet_size_from_config is not None:
+            packet_size_from_config = int(packet_size_from_config)
+            self.__size = packet_size_from_config
+        else:
+            self.__size = packet_size
+
         self.__success = False
         self.__spectrum_tx_params = SpectrumSignalParameters()
         self.__mac_header = BanMacHeader()

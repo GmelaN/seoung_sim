@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from ban.base.helper.mobility_helper import MovementPhase, MobilityHelper
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.tracer import Tracer
+from ban.config.JSONConfig import JSONConfig
 
 
 @dataclass(frozen=True)
@@ -32,33 +33,57 @@ class QLearningTrainer:
             movement_phases: MovementPhase,
             mobility_helper: MobilityHelper,
             tracers: list[Tracer],
+
             learning_rate: float = 0.2,
             discount_factor: float = 0.9,
             exploration_rate: float = 0.5,
     ):
+        '''
+
+        :param node_count:
+        :param time_slots:
+        :param sscs:
+        :param movement_phases:
+        :param mobility_helper:
+        :param tracers:
+        :param learning_rate:
+        :param discount_factor:
+        :param exploration_rate:
+        '''
+
+        '''KEYS FROM CONFIGURATION'''
+        CONFIG_KEYS: tuple[str, ...] = ("node_count", "time_slots", "learning_rate", "discount_factor", "exploration_rate")
+        configs = dict()
+
+        for key in CONFIG_KEYS:
+            config = JSONConfig.get_config(key)
+
+            if config is not None:
+                configs[key] = float(config)
+            else:
+                configs[key] = None
+
+        '''PARAMETERS FROM CONFIGURATION'''
+        self.node_count: int = int(configs["node_count"]) if node_count is None else node_count
+        self.time_slots: int = int(configs["time_slots"]) if time_slots is None else time_slots
+        self.learning_rate: float = configs["learning_rate"] if learning_rate is None else learning_rate
+        self.discount_factor: float = configs["discount_factor"] if discount_factor is None else discount_factor
+        self.exploration_rate: float = configs["exploration_rate"] if exploration_rate is None else exploration_rate
+
+        '''DEFAULT PARAMETERS'''
         self.sscs = sscs
-        self.node_count: int = node_count
-        self.time_slots: int = time_slots
         self.mobility_helper: MobilityHelper = mobility_helper
         self.tracers: list[Tracer] = tracers
-
         self.movement_phases: MovementPhase = movement_phases
 
-        self.learning_rate: float = learning_rate
-        self.discount_factor: float = discount_factor
-        self.exploration_rate:float = exploration_rate
+        '''Q-LEARNING PARAMETERS'''
+        self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))  # -1: unallocated
+        self.q_table = defaultdict(lambda: np.zeros(node_count + 1))  # "할당하지 않음" 포함
 
-        # -1: unallocated
-        self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))
-
-        # "할당하지 않음" 포함
-        self.q_table = defaultdict(lambda: np.zeros(node_count + 1))\
-
-        # initalize q_table(for first slot allocation)
+        '''initalize q_table(for first slot allocation)'''
         for phase in self.mobility_helper.phase_info.phases:
             for node in range(1, node_count + 1):
-                self.q_table[State(phase, node)][node] = np.float32(0.001)
-
+                self.q_table[State(phase, node)][node] = np.float32(0.00001)
 
     def choose_action(self, current_state: State) -> int:
         '''
@@ -111,7 +136,7 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1 * self.get_node_priority(action) * 100_000
+            return -1 * self.get_node_priority(action) * 1
 
         return self.get_throughput(action) * self.get_node_priority(action)
 

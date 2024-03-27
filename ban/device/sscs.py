@@ -11,6 +11,7 @@ from ban.base.helper.mobility_helper import MobilityHelper, MovementInfo
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 from ban.base.utils import milliseconds
+from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
 
 from ban.base.q_learning.q_learning_trainer import QLearningTrainer
@@ -59,8 +60,9 @@ class BanTxParams:
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
-    NUM_SLOTS = 10
-    SLOT_DURATION = 1 # default is 1
+
+    NUM_SLOTS = int(JSONConfig.get_config("time_slots"))
+    SLOT_DURATION = int(JSONConfig.get_config("slot_duration"))  # default is 1
 
     def __init__(
             self,
@@ -158,7 +160,7 @@ class BanSSCS:
             return
 
         # 비콘 패킷 설정
-        tx_packet = Packet(10)
+        tx_packet = Packet(packet_size=int(JSONConfig.get_config("packet_size")))
         tx_params = BanTxParams()
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
         tx_params.seq_num = None
