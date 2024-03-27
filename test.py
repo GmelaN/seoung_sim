@@ -31,13 +31,13 @@ prop_delay_model = PropDelayModel()
 channel.set_loss_model(prop_loss_model)
 channel.set_delay_model(prop_delay_model)
 
-COORDINATOR_ID = 0
+COORDINATOR_ID = 99
 
 def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+1 for i in range(NODE_COUNT)),
+        node_priority=tuple(i+10 for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -47,7 +47,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
 # Create node containers
 nodes: list[Node] = [
     NodeBuilder()
-    .set_device_params(BanTxParams(0, i + 1, COORDINATOR_ID))
+    .set_device_params(BanTxParams(0, i, COORDINATOR_ID))
     .set_channel(channel)
     .set_env(env)
     .build()
