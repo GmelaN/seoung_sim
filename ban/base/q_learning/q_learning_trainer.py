@@ -6,6 +6,8 @@ from typing import Dict
 
 import numpy as np
 
+np.random.seed(42)
+
 from dataclasses import dataclass
 
 from tqdm.auto import tqdm
@@ -136,12 +138,12 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1 * self.get_node_priority(action) * 1
+            return -1 * self.get_node_priority(action) * 100
 
-        return self.get_throughput(action) * self.get_node_priority(action)
+        return self.get_throughput(action) * self.get_node_priority(action) * 1
 
 
-    def train(self, time_slot_index: int):
+    def train(self, time_slot_index: int, allocated_node_id: int):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: training",
@@ -150,7 +152,8 @@ class QLearningTrainer:
 
         current_state = State(self.detect_movement_phase(), time_slot_index)
 
-        action = self.choose_action(current_state)                  # node index(will allocate to current slot)
+        # action = self.choose_action(current_state)                # node index(will allocate to current slot)
+        action = allocated_node_id                                  # node's id that allocated at that time slot
         next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
         reward = self.calculate_reward(action)                      # reward for taking that action
 
