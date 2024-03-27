@@ -443,7 +443,6 @@ class BanMac:
                 # generate and send an ACK frame.
                 # if the MAC state is MAC_ACK_PENDING, then we drop the packet that just sent before (data packet)
 
-                # TODO: if문 리팩토링
 
                 # ACK PENDING 상태인데 ACK가 아닌 데이터를 받은 경우: NO_ACK
                 if rx_ack_policy == BanTxOption.TX_OPTION_ACK and mac_state == BanMacState.MAC_ACK_PENDING:
@@ -498,7 +497,6 @@ class BanMac:
                     self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_COUNTER_ERROR)
 
         else:
-            # TODO: 검증
             # accept_frame = False -> return
             return
             # print("error")
@@ -518,7 +516,7 @@ class BanMac:
             if self.__tx_packet is None:
                 raise Exception("NO TX packet.")
 
-            # TODO: We give up the current transmission according to the three conditions below
+            # We give up the current transmission according to the three conditions below
             # Cond 1) if the current time is not in the boundary of allocation intervals
             # Cond 2) if the expected Tx time is over the remain allocation intervals
             # Cond 3) if the remain allocation interval is lower than the minimum time slot unit
@@ -562,7 +560,7 @@ class BanMac:
                         f"expected_tx_time: {expected_tx_time: .6f}, "
                         f"guard_time: {guard_time: .6f}, "
                         f"ack_rx_time: {ack_rx_time: .6f}, ",
-                    level=logging.INFO
+                    level=logging.DEBUG
                 )
 
                 if (microseconds(slot_duration) >= remain_alloc_time or
@@ -762,9 +760,11 @@ class BanMac:
         if pbar is None and total is False:
             output = (
                 f"NODE ID: {self.get_mac_params().node_id}\t"
+                f"REQUESTED PACKET COUNT: {self.get_tracer().get_requested_packet_count():5d}\t"
+                f"ENQUEUED PACKET COUNT: {self.get_tracer().get_enqueued_packet_count():5d}\t"
+                f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\t"
-                f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
                 f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
 
             )
@@ -774,6 +774,9 @@ class BanMac:
         if total is True:
             output = (
                 f"NODE ID: {self.get_mac_params().node_id}\t"
+                f"REQUESTED PACKET COUNT: {self.get_tracer().get_requested_packet_count():5d}\t"
+                f"ENQUEUED PACKET COUNT: {self.get_tracer().get_enqueued_packet_count():5d}\t"
+                f"SUCCESS PACKET COUNT: {self.get_tracer().get_success_packet_count():5d}\t"
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
                 f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
