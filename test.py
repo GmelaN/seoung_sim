@@ -141,7 +141,11 @@ event = env.event()
 event._ok = True
 
 # for node in range(len(nodes)):
+#     event = env.event()
+#     event._ok = True
 #     event.callbacks.append(lambda _: nodes[node].m_mac.show_result(total=True))
+#     env.schedule(event, priority=NORMAL, delay=run_time - 0.00001)
+
 
 event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
@@ -149,6 +153,8 @@ event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
 
 env.schedule(event, priority=NORMAL, delay=run_time - 0.00001)
 
