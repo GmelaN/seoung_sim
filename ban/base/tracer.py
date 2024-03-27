@@ -16,6 +16,8 @@ class Tracer:
         self.initial_energy = None
         self.reset_time = None
         self.transaction_count = 0
+        self.enqueued_packet_count: int = 0
+        self.requested_packet_count: int = 0
 
     def set_env(self, env):
         self.env = env
@@ -89,3 +91,12 @@ class Tracer:
 
     def get_transaction_count(self):
         return self.transaction_count
+
+    def get_enqueued_packet_count(self):
+        return self.total_tx_packet
+
+    def get_success_packet_count(self):
+        return self.total_success_tx_packet
+
+    def get_requested_packet_count(self):
+        return self.requested_packet_count
