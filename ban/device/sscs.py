@@ -77,7 +77,6 @@ class BanSSCS:
         self.tx_params: BanTxParams = BanTxParams()
         self.tx_power: float = 0   # dBm
 
-
         if coordinator:
             self.q_learning_trainer = QLearningTrainer(
                 mobility_helper=mobility_helper,
@@ -90,7 +89,7 @@ class BanSSCS:
 
             self.current_time_slot_index: int = 0
 
-        self.logger = logging.getLogger("BAN-SSCS")
+        # self.logger = logging.getLogger("BAN-SSCS")
 
         # 단위는 초 단위
         self.beacon_interval: float = milliseconds(255)  # ms
@@ -212,7 +211,7 @@ class BanSSCS:
             sim_time=self.env.now,
             msg=
             f"{self.__class__.__name__}[{self.tx_params.node_id}] time slot configuration is: {slots}",
-            level=logging.INFO
+            level=logging.CRITICAL
         )
 
         for i, slot in enumerate(slots):
@@ -251,8 +250,6 @@ class BanSSCS:
             level=logging.DEBUG
         )
 
-
-
     def send_data(self, tx_packet: Packet):
         tx_params = BanTxParams()
         tx_params.ban_id = self.tx_params.ban_id
@@ -260,6 +257,9 @@ class BanSSCS:
         tx_params.recipient_id = self.tx_params.recipient_id
 
         self.mac.mcps_data_request(self.tx_params, tx_packet)
+
+        # 전송 대기열에 오른 패킷 카운트
+        self.mac.get_tracer().requested_packet_count += 1
 
         event = self.env.event()
         event._ok = True
