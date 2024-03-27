@@ -68,7 +68,7 @@ nodeBuilder.set_sscs(get_ban_sscs(mobility_helper, tracers))
 
 agent: Node = nodeBuilder.build()
 
-mob_agent = MobilityModel(BodyPosition.HEAD)
+mob_agent = MobilityModel(BodyPosition.BODY)
 mobility_helper.add_mobility_list(mob_agent)
 agent.get_phy().set_mobility(mob_agent)
 
