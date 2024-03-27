@@ -111,7 +111,7 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1 * self.get_node_priority(action)
+            return -1 * self.get_node_priority(action) * 100_000
 
         return self.get_throughput(action) * self.get_node_priority(action)
 
