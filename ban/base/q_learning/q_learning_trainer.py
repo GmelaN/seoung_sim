@@ -138,9 +138,9 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1 * self.get_node_priority(action) * 100
+            return -1 * self.get_node_priority(action)
 
-        return self.get_throughput(action) * self.get_node_priority(action) * 1
+        return self.get_throughput(action) * self.get_node_priority(action)
 
 
     def train(self, time_slot_index: int, allocated_node_id: int):
@@ -152,8 +152,8 @@ class QLearningTrainer:
 
         current_state = State(self.detect_movement_phase(), time_slot_index)
 
-        # action = self.choose_action(current_state)                # node index(will allocate to current slot)
-        action = allocated_node_id                                  # node's id that allocated at that time slot
+        action = self.choose_action(current_state)                # node index(will allocate to current slot)
+        # action = allocated_node_id                                  # node's id that allocated at that time slot
         next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
         reward = self.calculate_reward(action)                      # reward for taking that action
 
@@ -216,6 +216,6 @@ class QLearningTrainer:
 
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=", ".join(throughputs),
+            msg="CURRENT ALLOCATION STAT:\n" + ", ".join(throughputs),
             level=logging.INFO
         )
