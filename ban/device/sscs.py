@@ -128,8 +128,9 @@ class BanSSCS:
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
-                + f"MAC reported transaction result: {status.name}",
+                + f"transaction result: {status.name}",
             level=logging.INFO,
+            newline=" "
         )
 
 
@@ -145,8 +146,13 @@ class BanSSCS:
                 msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
                 level=logging.INFO
             )
+            ev = self.env.event()
+            ev._ok = True
+            ev.callbacks.append(
+                lambda _: self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
+            )
 
-            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
+            self.env.schedule(ev, priority=NORMAL, delay=0)
 
         self.packet_list.append(rx_packet)
 
@@ -207,7 +213,6 @@ class BanSSCS:
 
         '''Q-learning: allocate time slot by strategy'''
         slots = self.q_learning_trainer.get_time_slots(self.q_learning_trainer.detect_movement_phase())
-        # slots = [(i + 1) for i in range(num_slot)]
 
         BanSSCS.logger.log(
             sim_time=self.env.now,
@@ -246,11 +251,6 @@ class BanSSCS:
     def beacon_interval_timeout(self, event):
         self.q_learning_trainer.print_throughput()
 
-        BanSSCS.logger.log(
-            sim_time=self.env.now,
-            msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] beacon signal interval timeout triggered.",
-            level=logging.DEBUG
-        )
 
     def send_data(self, tx_packet: Packet):
         tx_params = BanTxParams()
