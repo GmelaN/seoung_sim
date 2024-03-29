@@ -16,7 +16,7 @@ class SeoungSimLogger:
         # self.default_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.default_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
         self.newline_formatter = logging.Formatter(
-            '=' * 200
+            '\n' + '=' * 200
             + '\n'
             # + '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             + '%(name)s - %(levelname)s - %(message)s'
@@ -29,8 +29,8 @@ class SeoungSimLogger:
 
 
     def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
-        if level is None or level == logging.DEBUG:
-            return
+        # if level is None or level != logging.CRITICAL:
+        #     return
 
         full_message = f"[SimTime: {sim_time:.10f}] {msg}"
 

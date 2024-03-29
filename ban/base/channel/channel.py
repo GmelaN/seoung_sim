@@ -39,14 +39,14 @@ class Channel:
         self.__tx_packet = tx_packet
 
     def start_tx(self, event):
-        Channel.logger.log(
-            sim_time=self.get_env().now,
-            msg=
-            f"\tChannel: starting TX, "
-            + f"packet size: {self.__tx_packet.get_size()}, "
-            + f"from: {self.__tx_packet.get_mac_header().sender_id}, "
-            + f"to: {self.__tx_packet.get_mac_header().recipient_id}, "
-        )
+        # Channel.logger.log(
+        #     sim_time=self.get_env().now,
+        #     msg=
+        #     f"\tChannel: starting TX, "
+        #     + f"packet size: {self.__tx_packet.get_size()}, "
+        #     + f"from: {self.__tx_packet.get_mac_header().sender_id}, "
+        #     + f"to: {self.__tx_packet.get_mac_header().recipient_id}, "
+        # )
 
         # 필요한 멤버가 정의되어 있는지 검사
         if self.__tx_packet is None:
@@ -84,6 +84,8 @@ class Channel:
             spec_rx_params.tx_antenna = packet_copy.get_spectrum_tx_params().tx_antenna
             # 모델에서 계산된 손실값 반영
             spec_rx_params.tx_power -= path_loss_db
+
+            # spec_rx_params.tx_power -= 0.000_000_1
 
             # 수신 패킷 설정 완료
             packet_copy.set_spectrum_tx_params(spec_rx_params)
