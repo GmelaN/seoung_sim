@@ -19,8 +19,10 @@ env = simpy.Environment()  # Create the SimPy environment
 
 
 '''SET SIMULATION PARAMETERS'''
-simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
-NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
+# simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
+# NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
+simulation_time = 1
+NODE_COUNT = 1
 
 # channel
 channel = Channel()      # All nodes share a channel environment
@@ -149,13 +151,6 @@ event._ok = True
 
 
 event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
 
 env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
 

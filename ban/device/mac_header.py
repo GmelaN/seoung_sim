@@ -52,6 +52,8 @@ class AssignedLinkElement:
     interval_end: int | None = None
     tx_power: float | None = None
 
+    time_slot_index: int | None = None
+
 
 class BanMacHeader:
     def __init__(self):
@@ -59,6 +61,7 @@ class BanMacHeader:
         self.ban_id: int = None
         self.sender_id: int = None
         self.recipient_id: int = None
+        self.time_slot_index: int = None
 
     def set_frame_control(self, frame_type: BanFrameType, frame_subtype: BanFrameSubType, ack_policy, sequence_number):
         self.get_frame_control().frame_type = frame_type
@@ -72,10 +75,13 @@ class BanMacHeader:
 
         return self.__frame_control
 
-    def set_tx_params(self, ban_id, sender_id, recipient_id):
+    def set_tx_params(self, ban_id, sender_id, recipient_id, time_slot_index = None):
         self.ban_id = ban_id
         self.sender_id = sender_id
         self.recipient_id = recipient_id
+
+        if time_slot_index is not None:
+            self.time_slot_index = time_slot_index
 
     def get_tx_params(self) -> Tuple[int, int, int]:
         return self.ban_id, self.sender_id, self.recipient_id

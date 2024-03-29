@@ -1,11 +1,35 @@
+import dataclasses
+import enum
+import logging
 import math
 import random
 
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 
+MOVEMENT_CYCLE = 0.5                # seconds
+RANGE = 0
+
+
+class MovementPhase(enum.Enum):
+    PHASE_0: int = 0
+    PHASE_1: int = 1
+    # PHASE_2: int = 2
+
+
+@dataclasses.dataclass
+class MovementInfo:
+    # Phase의 수 -> 전체 페이즈의 수도 알 수 있음
+    phases: tuple[MovementPhase] = tuple(MovementPhase)
+
+    # 각 페이즈의 기간 정보 -> 한 전체 주기의 정보도 알 수 있음 (seconds)
+    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
+
 
 class MobilityHelper:
+    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+
     def __init__(self, env):
         self.env = env
 
@@ -19,11 +43,12 @@ class MobilityHelper:
         self.right_leg_direction = 1
         self.right_leg_degree = -100
 
-        self.movement_cycle = 1     # seconds
-        self.velocity = 0.5        # m/s
+        self.movement_cycle = MOVEMENT_CYCLE     # seconds
+        self.velocity = 0.5                      # m/s
 
         # static position
         self.head = Vector(1.1, 1.8, 1)                 # x, y, z
+        self.body = Vector(1.1, 1.3, 1)
         self.left_upper_torso = Vector(1, 1.3, 1)
         self.left_lower_torso = Vector(1, 1, 1)         # base position
         self.right_upper_torso = Vector(1.2, 1.3, 1)
@@ -43,6 +68,13 @@ class MobilityHelper:
 
         self.mobility_list = list()
 
+        # 모빌리티의 페이즈 정보
+        self.phase_info = MovementInfo()
+
+        # 현재 모빌리티 정보
+        self.current_phase = MovementPhase.PHASE_0
+
+
     def add_mobility_list(self, mobility: MobilityModel):
         self.mobility_list.append(mobility)
         self.update_position()
@@ -54,6 +86,17 @@ class MobilityHelper:
         self.move_right_leg()
 
         self.update_position()
+
+        # 현재 페이즈 정보 업데이트
+        next_phase: MovementPhase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
+
+        MobilityHelper.logger.log(
+            sim_time=self.env.now,
+            msg=f"Mobility movement phase set from: {self.current_phase} to: {next_phase}",
+            level=logging.INFO
+        )
+
+        self.current_phase = next_phase
 
         event = self.env.event()
         event._ok = True
@@ -86,7 +129,7 @@ class MobilityHelper:
             direction_x = 1     # right direction
 
         new_position = Vector(0, 0, 0)
-        new_position.x = random.uniform(0, 0.3) * direction_x
+        new_position.x = random.uniform(0, RANGE) * direction_x
         new_position.y = math.cos(-a) * 0.25    # 0.25 m => distance from left shoulder to left elbow
         new_position.z = math.sin(-a) * 0.25
 
@@ -125,7 +168,7 @@ class MobilityHelper:
             direction_x = 1     # right direction
 
         new_position = Vector(0, 0, 0)
-        new_position.x = random.uniform(0, 0.3) * direction_x
+        new_position.x = random.uniform(0, RANGE) * direction_x
         new_position.y = math.cos(-a) * 0.25    # 0.25 m => distance from right shoulder to right elbow
         new_position.z = math.sin(-a) * 0.25
 
@@ -214,6 +257,8 @@ class MobilityHelper:
         for mob_list in self.mobility_list:
             if mob_list.get_body_position() == BodyPosition.HEAD:
                 mob_list.set_position(self.head)
+            elif mob_list.get_body_position == BodyPosition.BODY:
+                mob_list.set_position(self.body)
             elif mob_list.get_body_position() == BodyPosition.LEFT_UPPER_TORSO:
                 mob_list.set_position(self.left_upper_torso)
             elif mob_list.get_body_position() == BodyPosition.LEFT_LOWER_TORSO:

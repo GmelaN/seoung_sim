@@ -1,10 +1,19 @@
 from ban.base.channel.base_channel import SpectrumSignalParameters
+from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanFrameSubType, BanMacHeader, Data, Beacon, IAck, BanFrameType
 
 class Packet:
-    # TODO: builder 패턴 적용
     def __init__(self, packet_size: int):
-        self.__size = packet_size
+
+        # read "packet_size" value from JSON config
+        packet_size_from_config: int | str = JSONConfig.get_config("packet_size")
+
+        if packet_size_from_config is not None:
+            packet_size_from_config = int(packet_size_from_config)
+            self.__size = packet_size_from_config
+        else:
+            self.__size = packet_size
+
         self.__success = False
         self.__spectrum_tx_params = SpectrumSignalParameters()
         self.__mac_header = BanMacHeader()
@@ -16,7 +25,7 @@ class Packet:
     #     assert frame_subtype is not None
     #     assert tx_params is not None
     #     assert tx_params.node_id is not None and tx_params.ban_id is not None and tx_params.recipient_id is not None
-    #     # TODO: setter와 params 대입 메서드 분리
+    #
     #     self.__mac_header.set_tx_params(tx_params.ban_id, tx_params.node_id, tx_params.recipient_id)
     #     self.__mac_header.set_frame_control(frame_type, frame_subtype, tx_params.tx_option, tx_params.seq_num)
     #

@@ -73,65 +73,17 @@ class DQNTrainer:
         ])
         model.compile(optimizer='rmsprop', loss='mse')
 
-        # Create a neural network using Functional API
-
-        # Fully-connected FFNN
-        # inputs = Input(shape=(10, ))
-        # hidden1 = Dense(64, activation='relu')(inputs)
-        # hidden2 = Dense(64, activation='relu')(hidden1)
-        # output = Dense(1, activation='sigmoid')(hidden2)
-        # model = Model(inputs=inputs, outputs=output)
-
-        # Linear regression
-        # inputs = Input(shape=(3,))
-        # output = Dense(1, activation='linear')(inputs)
-        # model = Model(inputs, output)
-        # model.compile(optimizer='sgd', loss='mse')
-        # model.fit(x=dat_test, y=y_cts_test, epoch=50, verbose=0)
-        # model.fit(x=dat_test, y=y_cts_test, epoch=1, verbose=1)
-
-        # Logistic regression
-        # inputs = Input(shape=(3,))
-        # output = Dense(1, activation='sigmoid')(inputs)
-        # model = Model(inputs, output)
-        # model.compile(optimizer='sgd', loss ='binary_crossentropy', metrics=['accuracy'])
-        # model.optimizer.lr = 0.001
-        # model.fit(x=data_train, y=y_classifier_train, epoch=5, validation_data=(dat_test, y_classifier_test))
-
-        # Multiple inputs model
-        # inputA = Input(shape=(64,))
-        # inputB = Input(shape=(128,))
-        # x = Dense(16, activation='relu')(inputA)
-        # x = Dense(8, activation='relu')(x)
-        # x = Model(inputs=inputA, outputs=x)
-
-        # y = Dense(64, activation-'relu')(inputB)
-        # y = Dense(32, activation='relu')(y)
-        # y = Dense(8, activation='relu')(y)
-        # y = Model(inputs=inputB, outputs=y)
-
-        # result = concatenate([x.output, y.output])
-
-        # z = Dense(2, activation='relu')(result)
-        # z = Dense(1, activation='linear')(z)
-        # model = Model(inputs=[x.input, y.input], outputs=z)
-
-        # Recurrence neural network (RNN)
-        # inputs = Input(shape(50, 1))
-        # lstm_layer = LSTM(10)(inputs)
-        # x = Dense(10, activation='relu')(lstm_layer)
-        # output = Dense(1, activation='sigmoid')(x)
-        # model = Model(inputs=inputs, outputs=output)
-
         return model
 
     def update_replay_memory(self, current_state, action, reward, next_state, done):
         self.replay_memory.append((current_state, action, reward, next_state, done))
 
     def get_q_values(self, x):
+        # 신경망으로 예측된 Q값 반환
         return self.model.predict(x, verbose=0)
 
     def train(self):
+        # Q값을 예측하는 신경망 학습
         # guarantee the minimum number of samples
         if len(self.replay_memory) < self.min_replay_memory_size:
             return
@@ -202,13 +154,24 @@ class DQNTrainer:
             # current episode is not done
             return False
 
+    """
+    에이전트가 다음 에피소드에 취할 액션을 선택합니다.
+
+    :param current_state:  
+    """
     def get_action(self, current_state):
+        # 에피소드 반복 종료 시: 최고의 보상을 받은 행동을 선택
         if self.current_episode > self.episodes:
             action = np.argmax(self.get_q_values(np.array([current_state])))
             return action
 
+        # epsilon에 따라 새로운 탐험을 할 것인지, 활용을 할 것인지 정함
+
+        # 활용(Exploitation): 에이전트가 알고 있는 정보를 바탕으로 최적 행동을 선택
         if random.random() > self.epsilon:
             action = np.argmax(self.get_q_values(np.array([current_state])))
+
+        # 탐험(Exploration): 에이전트가 무작위 행동을 선택하여 새로운 지식을 얻음
         else:
             action = np.random.randint(NUM_ACTIONS)
 
