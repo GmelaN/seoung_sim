@@ -1,8 +1,8 @@
 {
-  "learning_rate": 0.8,
+  "learning_rate": 2,
   "discount_factor": 0.9,
-  "exploration_rate": 0.5,
-  "time_slots": 10,
+  "exploration_rate": 0.3,
+  "time_slots": 2,
   "slot_duration": 1,
 
   "simulation_time": 1000,
