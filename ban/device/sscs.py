@@ -2,7 +2,6 @@ import logging
 from enum import Enum
 
 import simpy
-import tqdm
 from dataclasses import dataclass
 
 from simpy.events import NORMAL
@@ -164,7 +163,7 @@ class BanSSCS:
 
         self.packet_list.append(rx_packet)
 
-    def send_beacon(self, event, pbar: tqdm.tqdm | None = None):
+    def send_beacon(self, event):
         if not self.coordinator:
             BanSSCS.logger.log(
                 sim_time=self.env.now,
@@ -188,9 +187,6 @@ class BanSSCS:
             f"{self.__class__.__name__}[{self.tx_params.node_id}] sending beacon signal...",
             newline="\n"
         )
-
-        if pbar is not None:
-            pbar.update(1)
 
         self.mac.set_mac_header(
             packet=tx_packet,

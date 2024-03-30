@@ -1,6 +1,5 @@
 import simpy
 from simpy.events import NORMAL
-from tqdm import tqdm
 
 from ban.base.channel.channel import Channel
 from ban.base.channel.prop_delay_model import PropDelayModel
@@ -123,17 +122,6 @@ env.schedule(event, priority=NORMAL, delay=0)
 #     event.callbacks.append(node.m_mac.show_result)
 # env.schedule(event, priority=NORMAL, delay=10)
 
-
-pbar = tqdm(total=simulation_time - 1)
-
-def update_pbar(ev=None):
-    event = env.event()
-    event._ok = True
-    event.callbacks.append(lambda _: pbar.update(1))
-    event.callbacks.append(update_pbar)
-    env.schedule(event, priority=NORMAL, delay=1)
-
-update_pbar()
 
 # Run simulation
 
