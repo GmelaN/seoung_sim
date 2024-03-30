@@ -293,6 +293,7 @@ class BanPhy:
             # update trace info
             self.get_mac().get_tracer().add_tx_packet(tx_packet)
 
+
             event = self.__env.event()
             event._ok = True
             event.callbacks.append(self.get_channel().start_tx)
@@ -303,6 +304,14 @@ class BanPhy:
         elif (self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_RX_ON or
               self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF or
               self.__trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_BUSY_TX):
+
+            BanPhy.logger.log(
+                sim_time=self.__env.now,
+                msg=f"{self.__class__.__name__}[{self.__mac.get_mac_params().node_id}] "
+                    f"transmission failed due to PHY is not ready: current state is {self.__trx_state.name}",
+                level=logging.WARN,
+                newline=" "
+            )
 
             self.get_mac().pd_data_confirm(self.__trx_state)
 

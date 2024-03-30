@@ -238,7 +238,7 @@ class BanMac:
 
         # Push the packet into the Tx queue
         self.__tx_queue.put_nowait(tx_packet)
-        self.check_queue(self.get_env())
+        # self.check_queue(self.get_env())
 
 
     # Callback function (called from PHY)
@@ -327,6 +327,13 @@ class BanMac:
         #     level=logging.DEBUG
         # )
 
+        BanMac.logger.log(
+            sim_time=self.get_env().now,
+            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] packet received. from: {recipient_id}, "
+                + f"type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}",
+            level=logging.DEBUG
+        )
+
         rx_header: BanMacHeader = rx_packet.get_mac_header()
         accept_frame: bool = True                               # 수신된 패킷의 승인 여부
 
@@ -399,19 +406,26 @@ class BanMac:
                     self.time_slot_index = assigned_link.time_slot_index
 
 
-                    # BanMac.logger.log(
-                    #     sim_time=self.get_env().now,
-                    #     msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] "
-                    #         f"time slot index: {self.time_slot_index} "
-                    #         f"SET BEACON PARAMETERS TO: alloc_start_time: {self.__alloc_start_time:.6f}, "
-                    #         f"alloc_end_time: {self.__alloc_end_time:.6f}",
-                    #     level=logging.INFO
-                    # )
+                    BanMac.logger.log(
+                        sim_time=self.get_env().now,
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] "
+                            f"time slot: {self.time_slot_index} "
+                            f"alloc start: {self.__alloc_start_time:.6f}, "
+                            f"alloc end: {self.__alloc_end_time:.6f}",
+                        level=logging.DEBUG
+                    )
 
                     event = self.__env.event()
                     event._ok = True
                     event.callbacks.append(self.start_tx)
                     self.__env.schedule(event, priority=0, delay=self.__alloc_start_time)
+                else:
+                    BanMac.logger.log(
+                        sim_time=self.__env.now,
+                        msg=f"{self.__class__.__name__}[{self.get_mac_params().node_id}] "
+                            + f"dropping beacon signal because assigned_link is None.",
+                        level=logging.WARN
+                    )
 
             # for further processing the received control or data-type frame
             self.__rx_packet = rx_packet
@@ -459,7 +473,8 @@ class BanMac:
                 if rx_header.get_frame_control().sequence_number == tx_header.get_frame_control().sequence_number:
                     BanMac.logger.log(
                         sim_time=self.get_env().now,
-                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] received ACK message."
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] received ACK message.",
+                        level=logging.DEBUG
                     )
                     # if the packet that just sent before is a data frame
                     if tx_header.get_frame_control().frame_type == BanFrameType.IEEE_802_15_6_MAC_DATA:
@@ -553,6 +568,12 @@ class BanMac:
                 if (microseconds(slot_duration) >= remain_alloc_time or
                         (expected_tx_time + guard_time + ack_rx_time) >= remain_alloc_time):
 
+                    BanMac.logger.log(
+                        sim_time=self.get_env().now,
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] no remaining time left, TX failed.",
+                        level=logging.WARN
+                    )
+
                     self.__change_mac_state(BanMacState.MAC_IDLE)
 
                     if self.__mac_rx_on_when_idle is True:
@@ -561,12 +582,13 @@ class BanMac:
                     else:
                         self.get_phy().set_trx_state_request(BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF)
 
-                    # BanMac.logger.log(
-                    #     sim_time=self.get_env().now,
-                    #     msg=f"Expected Tx time: {expected_tx_time}, Remain alloc time: {remain_alloc_time}",
-                    #     level=logging.DEBUG
-                    # )
                     return
+
+            BanMac.logger.log(
+                sim_time=self.get_env().now,
+                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] TX start...",
+                level=logging.DEBUG
+            )
 
             self.get_phy().pd_data_request(self.__tx_packet)
 
@@ -589,7 +611,7 @@ class BanMac:
         if self.__tx_packet is None:
             BanMac.logger.log(
                 sim_time=self.get_env().now,
-                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: TX packet is None, entering IDLE mode",
+                msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] start_tx: TX packet is None.",
                 level=logging.WARN
             )
             self.set_mac_state(BanMacState.MAC_IDLE)
@@ -756,7 +778,14 @@ class BanMac:
                 f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
 
             )
-            print(output + " " * (80 - len(output)), end='\r')
+
+            BanMac.logger.log(
+                sim_time=self.__env.now,
+                msg=output,
+                level=logging.FATAL,
+            )
+
+            # print(output + " " * (80 - len(output)), end='\r')
             return
 
         else:

@@ -84,14 +84,14 @@ for i, position in enumerate(mobility_positions):
     mobility_helper.add_mobility_list(mobility)
 
     # Set mac parameters
-    nodes[i].get_mac().set_mac_params(BanTxParams(0, i + 1, COORDINATOR_ID))
+    nodes[i].get_mac().set_mac_params(BanTxParams(0, i, COORDINATOR_ID))
 
     agent.m_sscs.set_node_list(i)
 
 # Generate events (generate packet events)
 agent.m_sscs.send_beacon(event=env)
 
-delay = 0.01
+delay = 0.002
 
 def send_data(env):
     for node in nodes:

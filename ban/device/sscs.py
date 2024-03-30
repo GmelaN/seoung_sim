@@ -139,6 +139,14 @@ class BanSSCS:
         rx_power = rx_packet.get_spectrum_tx_params().tx_power
         sender_id = rx_packet.get_mac_header().sender_id
 
+        BanSSCS.logger.log(
+            sim_time=self.env.now,
+            msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
+                + f"MCPS-DATA.indication issued. received packet from: {sender_id}",
+            level=logging.INFO,
+            newline=" "
+        )
+
         '''update Q-table'''
         if self.coordinator:
             BanSSCS.logger.log(
@@ -146,13 +154,13 @@ class BanSSCS:
                 msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
                 level=logging.INFO
             )
-            ev = self.env.event()
-            ev._ok = True
-            ev.callbacks.append(
-                lambda _: self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
-            )
+            # ev = self.env.event()
+            # ev._ok = True
+            # ev.callbacks.append(
+            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
+            # )
 
-            self.env.schedule(ev, priority=NORMAL, delay=0)
+            # self.env.schedule(ev, priority=NORMAL, delay=0)
 
         self.packet_list.append(rx_packet)
 
@@ -161,7 +169,7 @@ class BanSSCS:
             BanSSCS.logger.log(
                 sim_time=self.env.now,
                 msg=f"{self.__class__.__name__}[{self.tx_params.node_id}] This device is not coordinator, ignoring send_beacon request.",
-                level=logging.WARNING
+                level=logging.WARN
             )
             return
 
@@ -262,6 +270,13 @@ class BanSSCS:
 
         # 전송 대기열에 오른 패킷 카운트
         self.mac.get_tracer().requested_packet_count += 1
+        BanSSCS.logger.log(
+            sim_time=self.env.now,
+            msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
+                + f"requested_packet_count increased, now {self.mac.get_tracer().requested_packet_count}",
+            level=logging.DEBUG,
+            newline=" "
+        )
 
         event = self.env.event()
         event._ok = True
