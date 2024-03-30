@@ -601,7 +601,7 @@ class BanMac:
             # print('Do nothing special when going idle')
             pass
         elif self.__mac_state == BanMacState.MAC_ACK_PENDING:
-            print('Do nothing special when waiting an ACK')
+            # print('Do nothing special when waiting an ACK')
             pass
         else:
             print('Error changing transceiver state')
