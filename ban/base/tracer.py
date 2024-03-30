@@ -80,9 +80,9 @@ class Tracer:
 
     def get_pkt_delivery_ratio(self, total=False):
         if total:
-            return self.total_success_tx_packet / self.total_tx_packet
+            return self.total_success_tx_packet / self.total_tx_packet if self.total_tx_packet != 0 else 0
 
-        if len(self.success_tx_packet) == 0:
+        if len(self.success_tx_packet) == 0 or len(self.tx_packet) == 0:
             return 0
 
 
