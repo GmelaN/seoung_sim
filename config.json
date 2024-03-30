@@ -1,12 +1,14 @@
 {
   "learning_rate": 2,
   "discount_factor": 0.9,
-  "exploration_rate": 0.3,
+  "exploration_rate": 0.7,
   "time_slots": 10,
   "slot_duration": 1,
 
   "simulation_time": 1000,
   "node_count": 8,
 
-  "packet_size": 10
+  "packet_size": 10,
+
+  "log_level": "CRITICAL"
 }
