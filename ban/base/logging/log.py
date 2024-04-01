@@ -31,12 +31,12 @@ class SeoungSimLogger:
 
 
         # self.default_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.default_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        self.default_formatter = logging.Formatter('%(name)-15s%(levelname)-10s%(message)s')
         self.newline_formatter = logging.Formatter(
             '\n' + '=' * 200
             + '\n'
             # + '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            + '%(name)s - %(levelname)s - %(message)s'
+            + '%(name)-15s%(levelname)-10s%(message)s'
             + '\n'
             + '=' * 200
         )
@@ -53,7 +53,7 @@ class SeoungSimLogger:
             return
 
 
-        full_message = f"[SimTime: {sim_time:.10f}] {msg}"
+        full_message = f"+{sim_time:.6f} {msg}"
 
         if len(newline) != 0:
             self.loggingHandler.setFormatter(self.newline_formatter)

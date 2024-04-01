@@ -28,7 +28,7 @@ class MovementInfo:
 
 
 class MobilityHelper:
-    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+    logger = SeoungSimLogger(logger_name="MOBILITY", level=logging.DEBUG)
 
     def __init__(self, env):
         self.env = env
