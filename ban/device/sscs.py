@@ -123,7 +123,12 @@ class BanSSCS:
         self.node_list.append(node_id)
 
 
-    def data_confirm(self, status: BanDataConfirmStatus):
+    def data_confirm(
+            self,
+            status: BanDataConfirmStatus,
+            time_slot_index: int | None = None,
+            node_id: int | None = None
+    ):
         BanSSCS.logger.log(
             sim_time=self.env.now,
             msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
@@ -131,6 +136,32 @@ class BanSSCS:
             level=logging.INFO,
             newline=" "
         )
+
+        '''update Q-table'''
+        # 전송이 성공한 경우 AND 코디네이터 디바이스인 경우 AND 데이터를 수신(ACK 메시지)받은 경우
+        # sender_id is not None이 있는 이유는 비콘 신호를 보낸 다음에도 data_confirm이 호출되기 때문
+        if self.coordinator:
+            print("", end="")
+
+        if status == BanDataConfirmStatus.IEEE_802_15_6_SUCCESS and self.coordinator and node_id is not None:
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
+                level=logging.DEBUG
+            )
+            # ev = self.env.event()
+            # ev._ok = True
+            # ev.callbacks.append(
+
+            if time_slot_index is None or node_id is None:
+                raise Exception("time slot index and sender_id is needed to train.")
+
+            self.q_learning_trainer.train(time_slot_index, allocated_node_id=node_id)
+            # )
+
+            # self.env.schedule(ev, priority=NORMAL, delay=0)
+
+
 
 
     def data_indication(self, rx_packet: Packet):
@@ -146,22 +177,8 @@ class BanSSCS:
             newline=" "
         )
 
-        '''update Q-table'''
-        if self.coordinator:
-            BanSSCS.logger.log(
-                sim_time=self.env.now,
-                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
-                level=logging.INFO
-            )
-            # ev = self.env.event()
-            # ev._ok = True
-            # ev.callbacks.append(
-            self.q_learning_trainer.train(rx_packet.get_mac_header().time_slot_index, allocated_node_id = sender_id)
-            # )
-
-            # self.env.schedule(ev, priority=NORMAL, delay=0)
-
         self.packet_list.append(rx_packet)
+
 
     def send_beacon(self, event):
         if not self.coordinator:
