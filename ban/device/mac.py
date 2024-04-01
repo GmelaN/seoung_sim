@@ -330,6 +330,7 @@ class BanMac:
     def pd_data_indication(self, rx_packet: Packet):
         broadcast = "BROADCAST"
         recipient_id = rx_packet.get_mac_header().recipient_id
+        sender_id = rx_packet.get_mac_header().sender_id
 
         # BanMac.logger.log(
         #     sim_time=self.get_env().now,
@@ -342,12 +343,12 @@ class BanMac:
         #     level=logging.DEBUG
         # )
 
-        BanMac.logger.log(
-            sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] packet received. from: {recipient_id}, "
-                + f"type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}",
-            level=logging.DEBUG
-        )
+        # BanMac.logger.log(
+        #     sim_time=self.get_env().now,
+        #     msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] packet received. from: {sender_id}, "
+        #         + f"type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}",
+        #     level=logging.DEBUG
+        # )
 
         rx_header: BanMacHeader = rx_packet.get_mac_header()
         accept_frame: bool = True                               # 수신된 패킷의 승인 여부

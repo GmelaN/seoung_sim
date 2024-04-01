@@ -9,7 +9,7 @@ from simpy.events import NORMAL
 from ban.base.helper.mobility_helper import MobilityHelper, MovementInfo
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
-from ban.base.utils import milliseconds
+from ban.base.utils import milliseconds, microseconds
 from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanFrameType, BanFrameSubType, AssignedLinkElement
 
@@ -108,6 +108,8 @@ class BanSSCS:
             # 노드별 우선순위 리스트
             self.node_priority = node_priority
 
+            self.time_slots = []
+
 
     def set_env(self, env):
         self.env = env
@@ -137,29 +139,29 @@ class BanSSCS:
             newline=" "
         )
 
-        '''update Q-table'''
-        # 전송이 성공한 경우 AND 코디네이터 디바이스인 경우 AND 데이터를 수신(ACK 메시지)받은 경우
-        # sender_id is not None이 있는 이유는 비콘 신호를 보낸 다음에도 data_confirm이 호출되기 때문
-        if self.coordinator:
-            print("", end="")
-
-        if status == BanDataConfirmStatus.IEEE_802_15_6_SUCCESS and self.coordinator and node_id is not None:
-            BanSSCS.logger.log(
-                sim_time=self.env.now,
-                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
-                level=logging.DEBUG
-            )
-            # ev = self.env.event()
-            # ev._ok = True
-            # ev.callbacks.append(
-
-            if time_slot_index is None or node_id is None:
-                raise Exception("time slot index and sender_id is needed to train.")
-
-            self.q_learning_trainer.train(time_slot_index, allocated_node_id=node_id)
-            # )
-
-            # self.env.schedule(ev, priority=NORMAL, delay=0)
+        # '''update Q-table'''
+        # # 전송이 성공한 경우 AND 코디네이터 디바이스인 경우 AND 데이터를 수신(ACK 메시지)받은 경우
+        # # sender_id is not None이 있는 이유는 비콘 신호를 보낸 다음에도 data_confirm이 호출되기 때문
+        # if self.coordinator:
+        #     print("", end="")
+        #
+        # if status == BanDataConfirmStatus.IEEE_802_15_6_SUCCESS and self.coordinator and node_id is not None:
+        #     BanSSCS.logger.log(
+        #         sim_time=self.env.now,
+        #         msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] updating Q-table",
+        #         level=logging.DEBUG
+        #     )
+        #     # ev = self.env.event()
+        #     # ev._ok = True
+        #     # ev.callbacks.append(
+        #
+        #     if time_slot_index is None or node_id is None:
+        #         raise Exception("time slot index and sender_id is needed to train.")
+        #
+        #     self.q_learning_trainer.train(time_slot_index, allocated_node_id=node_id)
+        #     # )
+        #
+        #     # self.env.schedule(ev, priority=NORMAL, delay=0)
 
 
 
@@ -253,6 +255,31 @@ class BanSSCS:
 
                 tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
+                # self.__alloc_start_time = assigned_link.interval_start
+                # self.__alloc_end_time = assigned_link.interval_end
+                #
+                # # TDMA 슬롯 기간 계산
+                # slot_duration = (
+                #         self.mac.mAllocationSlotLength * self.mac.pAllocationSlotResolution
+                #         + self.mac.pAllocationSlotMin
+                # )
+                #
+                # tx_start_time = microseconds(self.__alloc_start_time * slot_duration) + microseconds(self.mac.pSIFS)
+                # tx_timeout = (
+                #         microseconds(self.__alloc_start_time * slot_duration)
+                #         + microseconds(self.__alloc_end_time * slot_duration)
+                # )
+                #
+                # self.slot_duration = tx_timeout - tx_start_time
+                #
+                self.time_slots.append((i, slot))
+                #
+                # ev = self.env.event()
+                # ev.callbacks.append(self.update_q_table)
+                # ev._ok = True
+                # self.env.schedule(ev, delay=(tx_timeout - tx_start_time + 0.011075) * (i + 1))
+
+
             start_offset += (num_slot + BanSSCS.SLOT_DURATION)
 
             if start_offset > beacon_length:
@@ -269,8 +296,35 @@ class BanSSCS:
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
+    def update_q_table(self): #, time_slot_index: int, node_id: int):
+        while self.time_slots:
+            time_slot_index, node_id = self.time_slots.pop(0)
+
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
+                    + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
+                level=logging.DEBUG,
+                newline=" "
+            )
+
+            self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
+
+
     def beacon_interval_timeout(self, event):
         self.q_learning_trainer.print_throughput()
+        # self.update_q_table()
+        while self.time_slots:
+            time_slot_index, node_id = self.time_slots.pop(0)
+
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
+                    + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
+                level=logging.DEBUG,
+            )
+
+            self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
 
 
     def send_data(self, tx_packet: Packet):

@@ -122,7 +122,7 @@ class QLearningTrainer:
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: updating Q-table, reward: {reward}",
-            level=logging.DEBUG
+            level=logging.INFO
         )
 
         # 다음 행동 중 가장 가치가 큰 행동
@@ -146,14 +146,14 @@ class QLearningTrainer:
     def train(self, time_slot_index: int, allocated_node_id: int):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"COORDINATOR: training, time slot: {time_slot_index}, allocated: {allocated_node_id}",
-            level=logging.DEBUG
+            msg=f"training, time slot: {time_slot_index}, allocated: {allocated_node_id}",
+            level=logging.INFO
         )
 
         current_state = State(self.detect_movement_phase(), time_slot_index)
 
-        action = self.choose_action(current_state)                # node index(will allocate to current slot)
-        # action = allocated_node_id                                  # node's id that allocated at that time slot
+        # action = self.choose_action(current_state)                # node index(will allocate to current slot)
+        action = allocated_node_id                                  # node's id that allocated at that time slot
         next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
         reward = self.calculate_reward(action)                      # reward for taking that action
 
@@ -195,6 +195,8 @@ class QLearningTrainer:
 
 
     def get_throughput(self, node_id: int) -> float:
+        if node_id == -1:
+            return 0
         # print(self.tracers[node_id].get_throughput())
         # TODO: 정확한 스루풋 반환
         return self.tracers[node_id].get_throughput()
