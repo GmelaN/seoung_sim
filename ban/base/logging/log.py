@@ -2,15 +2,32 @@ import logging
 
 from simpy.core import SimTime
 
+from ban.config.JSONConfig import JSONConfig
+
 
 class SeoungSimLogger:
     def __init__(self, logger_name: str, level: int=logging.INFO):
+        level = JSONConfig.get_config("log_level").lower()
+
+        if level == "debug":
+            self.level = logging.DEBUG
+        elif level == "info":
+            self.level = logging.INFO
+        elif level == "warn" or level == "warning":
+            self.level = logging.WARN
+        elif level == "critical":
+            self.level = logging.CRITICAL
+        else:
+            self.level = 999_999
+
+
         self.logger = logging.getLogger(logger_name)
-        self.logger.setLevel(level)
-        self.level = level
+        self.logger.setLevel(self.level)
 
         self.loggingHandler = logging.StreamHandler()
-        self.loggingHandler.setLevel(level)
+        self.loggingHandler.setLevel(self.level)
+
+
 
 
         # self.default_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -28,9 +45,13 @@ class SeoungSimLogger:
         self.logger.addHandler(self.loggingHandler)
 
 
-    def log(self, sim_time: SimTime, msg: str, level: int = None, newline: str = "") -> None:
+    def log(self, sim_time: SimTime, msg: str, level: int = logging.NOTSET, newline: str = "") -> None:
         # if level is None or level != logging.CRITICAL:
         #     return
+
+        if level < self.level:
+            return
+
 
         full_message = f"[SimTime: {sim_time:.10f}] {msg}"
 

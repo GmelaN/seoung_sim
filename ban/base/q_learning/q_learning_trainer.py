@@ -146,7 +146,7 @@ class QLearningTrainer:
     def train(self, time_slot_index: int, allocated_node_id: int):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"COORDINATOR: training",
+            msg=f"COORDINATOR: training, time slot: {time_slot_index}, allocated: {allocated_node_id}",
             level=logging.DEBUG
         )
 
@@ -167,10 +167,10 @@ class QLearningTrainer:
         state: State = State(phase=phase, slot=0)
 
         for i in range(self.time_slots):
-            node: int = np.argmax(self.q_table[state])
-
-            if node == 0:
-                node = -1
+            node: int = np.argmax(self.q_table[state]) - 1
+            # TODO: 검증
+            # if node == 0:
+            #     node = -1
 
             time_slots[i] = node
             state = State(phase=state.phase, slot=state.slot + 1)

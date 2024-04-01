@@ -1,9 +1,13 @@
+import logging
 import math
 
+from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
 
 
 class Tracer:
+    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+
     def __init__(self):
         self.env = None
         self.tx_packet = list()
@@ -27,6 +31,11 @@ class Tracer:
         self.initial_energy = energy
 
     def reset(self):
+        Tracer.logger.log(
+            sim_time=self.env.now,
+            msg="reset tracer.",
+            level=logging.DEBUG
+        )
         self.tx_packet.clear()
         self.success_tx_packet.clear()
         self.success_tx_bit = 0
@@ -34,6 +43,11 @@ class Tracer:
         self.reset_time = self.env.now
 
     def add_tx_packet(self, packet: Packet):
+        Tracer.logger.log(
+            sim_time=self.env.now,
+            msg=f"added TX packet.",
+            level=logging.DEBUG
+        )
         self.transaction_count += 1
         self.total_tx_packet += 1
         self.tx_packet.append(packet)
@@ -41,6 +55,12 @@ class Tracer:
         self.add_consumed_energy(tx_power)
 
     def add_success_tx_packet(self, packet: Packet):
+        Tracer.logger.log(
+            sim_time=self.env.now,
+            msg="added success TX packet.",
+            level=logging.DEBUG
+        )
+
         self.success_tx_packet.append(packet)
         self.total_success_tx_packet += 1
         self.total_success_tx_bit += packet.get_size() * 8
@@ -80,9 +100,9 @@ class Tracer:
 
     def get_pkt_delivery_ratio(self, total=False):
         if total:
-            return self.total_success_tx_packet / self.total_tx_packet
+            return self.total_success_tx_packet / self.total_tx_packet if self.total_tx_packet != 0 else 0
 
-        if len(self.success_tx_packet) == 0:
+        if len(self.success_tx_packet) == 0 or len(self.tx_packet) == 0:
             return 0
 
 
