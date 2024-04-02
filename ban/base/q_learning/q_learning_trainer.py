@@ -121,7 +121,7 @@ class QLearningTrainer:
     def update_q_table(self, current_state: State, action: int, reward: float, next_state: State):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"COORDINATOR: updating Q-table, reward: {reward}",
+            msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}",
             level=logging.INFO
         )
 
@@ -134,6 +134,10 @@ class QLearningTrainer:
 
 
     def calculate_reward(self, action: int) -> float:
+        # 할당되지 않은 슬롯 발견 시 약한 음의 보상
+        if action == -1:
+            return -0.01
+
         throughput = self.get_throughput(action)
 
         # 전송 데이터가 0인 경우 음의 보상
@@ -143,14 +147,14 @@ class QLearningTrainer:
         return self.get_throughput(action) * self.get_node_priority(action)
 
 
-    def train(self, time_slot_index: int, allocated_node_id: int):
+    def train(self, time_slot_index: int, allocated_node_id: int, mobility_phase: MovementPhase):
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"training, time slot: {time_slot_index}, allocated: {allocated_node_id}",
+            msg=f"training, time slot: {time_slot_index}, allocated: {allocated_node_id}, phase: {mobility_phase.name}",
             level=logging.INFO
         )
 
-        current_state = State(self.detect_movement_phase(), time_slot_index)
+        current_state = State(mobility_phase, time_slot_index)
 
         # action = self.choose_action(current_state)                # node index(will allocate to current slot)
         action = allocated_node_id                                  # node's id that allocated at that time slot
@@ -167,10 +171,12 @@ class QLearningTrainer:
         state: State = State(phase=phase, slot=0)
 
         for i in range(self.time_slots):
-            node: int = np.argmax(self.q_table[state]) - 1
+            # node: int = np.argmax(self.q_table[state]) - 1
             # TODO: 검증
             # if node == 0:
             #     node = -1
+
+            node: int = self.choose_action(current_state=state)
 
             time_slots[i] = node
             state = State(phase=state.phase, slot=state.slot + 1)
