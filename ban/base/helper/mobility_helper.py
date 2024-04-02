@@ -101,7 +101,7 @@ class MobilityHelper:
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.do_walking)
-        self.env.schedule(event, priority=0, delay=self.movement_cycle)
+        self.env.schedule(event, priority=0, delay=self.movement_cycle - 0.00001)
 
     def move_left_hand(self):
         if self.left_hand_direction == 1:
