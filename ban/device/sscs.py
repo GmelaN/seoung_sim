@@ -55,6 +55,12 @@ class BanTxParams:
     tx_option: BanTxOption | None = None
     time_slot_info: int | None = None
 
+@dataclass
+class TimeSlotAllocationInfo:
+    time_slot_index: int | None = None,
+    node_id:int | None = None,
+    mobility_phase: MovementInfo | None = None
+
 
 # Service specific convergence sub-layer (SSCS)
 class BanSSCS:
@@ -108,7 +114,7 @@ class BanSSCS:
             # 노드별 우선순위 리스트
             self.node_priority = node_priority
 
-            self.time_slots = []
+            self.time_slots: list[TimeSlotAllocationInfo] = []
 
 
     def set_env(self, env):
@@ -235,6 +241,7 @@ class BanSSCS:
         num_slot = BanSSCS.NUM_SLOTS  # for test. the number of allocation slots
 
         '''Q-learning: allocate time slot by strategy'''
+        # [node, node, ..., node], slots[time_slot_index]: node_id
         slots = self.q_learning_trainer.get_time_slots(self.q_learning_trainer.detect_movement_phase())
 
         BanSSCS.logger.log(
@@ -244,42 +251,30 @@ class BanSSCS:
             level=logging.CRITICAL
         )
 
-        for i, slot in enumerate(slots):
-            if slot != -1:
+        for time_slot_index, node_id in enumerate(slots):
+            if node_id != -1:
                 assigned_link = AssignedLinkElement()
-                assigned_link.allocation_id = slot
+                assigned_link.allocation_id = node_id
                 assigned_link.interval_start = start_offset
                 assigned_link.interval_end = num_slot
                 assigned_link.tx_power = self.tx_power
-                assigned_link.time_slot_index = i
+                assigned_link.time_slot_index = time_slot_index
 
                 tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
-                # self.__alloc_start_time = assigned_link.interval_start
-                # self.__alloc_end_time = assigned_link.interval_end
-                #
-                # # TDMA 슬롯 기간 계산
-                # slot_duration = (
-                #         self.mac.mAllocationSlotLength * self.mac.pAllocationSlotResolution
-                #         + self.mac.pAllocationSlotMin
-                # )
-                #
-                # tx_start_time = microseconds(self.__alloc_start_time * slot_duration) + microseconds(self.mac.pSIFS)
-                # tx_timeout = (
-                #         microseconds(self.__alloc_start_time * slot_duration)
-                #         + microseconds(self.__alloc_end_time * slot_duration)
-                # )
-                #
-                # self.slot_duration = tx_timeout - tx_start_time
-                #
-                self.time_slots.append((i, slot))
-                #
-                # ev = self.env.event()
-                # ev.callbacks.append(self.update_q_table)
-                # ev._ok = True
-                # self.env.schedule(ev, delay=(tx_timeout - tx_start_time + 0.011075) * (i + 1))
+            BanSSCS.logger.log(
+                sim_time=self.env.now,
+                msg=f"configuring time slots...{time_slot_index}",
+                level=logging.DEBUG
+            )
 
-
+            self.time_slots.append(
+                TimeSlotAllocationInfo(
+                    time_slot_index=time_slot_index,
+                    node_id=node_id,
+                    mobility_phase=self.mobility_helper.current_phase
+                )
+            )
             start_offset += (num_slot + BanSSCS.SLOT_DURATION)
 
             if start_offset > beacon_length:
@@ -296,26 +291,28 @@ class BanSSCS:
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
 
 
-    def update_q_table(self): #, time_slot_index: int, node_id: int):
-        while self.time_slots:
-            time_slot_index, node_id = self.time_slots.pop(0)
-
-            BanSSCS.logger.log(
-                sim_time=self.env.now,
-                msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
-                    + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
-                level=logging.DEBUG,
-                newline=" "
-            )
-
-            self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
+    # def update_q_table(self): #, time_slot_index: int, node_id: int):
+    #     while self.time_slots:
+    #         time_slot_index, node_id = self.time_slots.pop(0)
+    #
+    #         BanSSCS.logger.log(
+    #             sim_time=self.env.now,
+    #             msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
+    #                 + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
+    #             level=logging.DEBUG,
+    #             newline=" "
+    #         )
+    #
+    #         self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
 
 
     def beacon_interval_timeout(self, event):
         self.q_learning_trainer.print_throughput()
         # self.update_q_table()
+
         while self.time_slots:
-            time_slot_index, node_id = self.time_slots.pop(0)
+            time_slot: TimeSlotAllocationInfo = self.time_slots.pop(0)
+            time_slot_index, node_id, mobility_phase = time_slot.time_slot_index, time_slot.node_id, time_slot.mobility_phase
 
             BanSSCS.logger.log(
                 sim_time=self.env.now,
@@ -324,7 +321,7 @@ class BanSSCS:
                 level=logging.DEBUG,
             )
 
-            self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
+            self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id, mobility_phase=mobility_phase)
 
 
     def send_data(self, tx_packet: Packet):
