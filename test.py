@@ -36,7 +36,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+10 for i in range(NODE_COUNT)),
+        node_priority=tuple(i+1 for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -87,8 +87,14 @@ for i, position in enumerate(mobility_positions):
 
     agent.m_sscs.set_node_list(i)
 
-# Generate events (generate packet events)
-agent.m_sscs.send_beacon(event=env)
+# agent.m_sscs.q_learning_trainer.turn_off()
+
+# Generate events (generate mobility)
+event = env.event()
+event._ok = True
+event.callbacks.append(mobility_helper.do_walking)
+event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
+env.schedule(event, priority=NORMAL, delay=0)
 
 delay = 0.002
 
@@ -106,14 +112,6 @@ event._ok = True
 event.callbacks.append(send_data)
 env.schedule(event, priority=NORMAL, delay=delay)
 
-
-
-# Generate events (generate mobility)
-event = env.event()
-event._ok = True
-event.callbacks.append(mobility_helper.do_walking)
-
-env.schedule(event, priority=NORMAL, delay=0)
 
 # Print statistical results
 # event = env.event()
@@ -144,6 +142,7 @@ event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
 event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
+event.callbacks.append(agent.m_sscs.print_q_table)
 
 env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
 
