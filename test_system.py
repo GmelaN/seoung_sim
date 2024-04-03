@@ -1,6 +1,5 @@
 import simpy
 from simpy.events import NORMAL
-from tqdm import tqdm
 
 from ban.base.channel.channel import Channel
 from ban.base.channel.prop_delay_model import PropDelayModel
@@ -19,9 +18,9 @@ env = simpy.Environment()  # Create the SimPy environment
 
 
 '''SET SIMULATION PARAMETERS'''
-# simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
+simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
 # NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
-simulation_time = 1
+# simulation_time = 1
 NODE_COUNT = 1
 
 # channel
@@ -90,8 +89,15 @@ for i, position in enumerate(mobility_positions):
 
     agent.m_sscs.set_node_list(i)
 
+# Generate events (generate mobility)
+event = env.event()
+event._ok = True
+event.callbacks.append(mobility_helper.do_walking)
+event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
+env.schedule(event, priority=NORMAL, delay=0)
+
 # Generate events (generate packet events)
-agent.m_sscs.send_beacon(event=env)
+# agent.m_sscs.send_beacon(event=env)
 
 delay = 0.002
 
@@ -108,15 +114,6 @@ event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
 env.schedule(event, priority=NORMAL, delay=delay)
-
-
-
-# Generate events (generate mobility)
-event = env.event()
-event._ok = True
-event.callbacks.append(mobility_helper.do_walking)
-
-env.schedule(event, priority=NORMAL, delay=0)
 
 # Print statistical results
 # event = env.event()

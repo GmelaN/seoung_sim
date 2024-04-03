@@ -6,7 +6,7 @@ from ban.base.packet import Packet
 
 
 class Tracer:
-    logger = SeoungSimLogger(logger_name="BAN-RL", level=logging.DEBUG)
+    logger = SeoungSimLogger(logger_name="TRACER", level=logging.DEBUG)
 
     def __init__(self):
         self.env = None

@@ -68,7 +68,6 @@ class BanMac:
         self.time_slot_index = None
 
 
-
     def set_env(self, env: simpy.Environment):
         self.__env = env
 
@@ -284,8 +283,24 @@ class BanMac:
                 self.__env.schedule(event, priority=0, delay=self.__ack_wait_time)
 
             else:
-                # ACK 수신 대기를 할 필요가 없는 경우 - 비콘 신호 보낸 경우
-                self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_SUCCESS)    # 바로 전송 성공을 알림
+                # ACK 수신 대기를 할 필요가 없는 경우 - 비콘 신호 보낸 경우, ACK 확인 메시지 보낸 경우
+
+                mac_header: BanMacHeader = self.__tx_packet.get_mac_header()
+
+                # 한 노드로부터 데이터를 수신했고, 이 코디네이터에서 ACK 메시지를 성공적으로 보낸 경우
+                if mac_header.get_frame_control().frame_subtype == BanFrameSubType.WBAN_CONTROL_IACK:
+                    self.__sscs.data_confirm(
+                        BanDataConfirmStatus.IEEE_802_15_6_SUCCESS,
+                        node_id=mac_header.recipient_id,
+                        time_slot_index=mac_header.time_slot_index,
+                    )
+
+                # 기타(비콘 신호 등등)
+                else:
+                    self.__sscs.data_confirm(BanDataConfirmStatus.IEEE_802_15_6_SUCCESS)
+
+
+
                 self.__tx_packet = None                                                 # TX 패킷 초기화
                 self.__change_mac_state(BanMacState.MAC_IDLE)                           # MAC은 IDLE 모드
                 if self.__mac_rx_on_when_idle is True:                                  # 'IDLE시 RX 대기 모드'인 경우
@@ -315,6 +330,7 @@ class BanMac:
     def pd_data_indication(self, rx_packet: Packet):
         broadcast = "BROADCAST"
         recipient_id = rx_packet.get_mac_header().recipient_id
+        sender_id = rx_packet.get_mac_header().sender_id
 
         # BanMac.logger.log(
         #     sim_time=self.get_env().now,
@@ -327,12 +343,12 @@ class BanMac:
         #     level=logging.DEBUG
         # )
 
-        BanMac.logger.log(
-            sim_time=self.get_env().now,
-            msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] packet received. from: {recipient_id}, "
-                + f"type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}",
-            level=logging.DEBUG
-        )
+        # BanMac.logger.log(
+        #     sim_time=self.get_env().now,
+        #     msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] packet received. from: {sender_id}, "
+        #         + f"type: {rx_packet.get_mac_header().get_frame_control().frame_type.name}",
+        #     level=logging.DEBUG
+        # )
 
         rx_header: BanMacHeader = rx_packet.get_mac_header()
         accept_frame: bool = True                               # 수신된 패킷의 승인 여부
@@ -701,6 +717,8 @@ class BanMac:
         tx_params.recipient_id = self.__rx_packet.get_mac_header().sender_id
         tx_params.tx_option = BanTxOption.TX_OPTION_NONE
         tx_params.seq_num = self.__rx_packet.get_mac_header().get_frame_control().sequence_number
+        tx_params.time_slot_info = self.__rx_packet.get_mac_header().time_slot_index
+        self.time_slot_index = tx_params.time_slot_info
 
         # ack_pkt.set_mac_header(
         #     BanFrameType.IEEE_802_15_6_MAC_CONTROL,
@@ -712,7 +730,7 @@ class BanMac:
             packet=ack_packet,
             tx_params=tx_params,
             frame_type=BanFrameType.IEEE_802_15_6_MAC_CONTROL,
-            frame_subtype=BanFrameSubType.WBAN_CONTROL_IACK,
+            frame_subtype=BanFrameSubType.WBAN_CONTROL_IACK
         )
 
         # Enqueue the ACK packet for further processing when the transceiver is activated
