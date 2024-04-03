@@ -5,6 +5,7 @@ from simpy import Environment
 from ban.base.channel.base_channel import DelayModel, LossModel, SpectrumSignalParameters
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.packet import Packet
+from ban.config.JSONConfig import JSONConfig
 
 
 class Channel:
@@ -19,6 +20,8 @@ class Channel:
         self.__max_loss_db = 1.0e9
         self.__tx_packet: Packet = None
         self.__phy_list = list()  # send a data packet to all the registered phy modules
+
+        self.additional_tx_power_loss = float(JSONConfig.get_config("additional_tx_loss"))
 
     def add_phy_list(self, phy):
         self.__phy_list.append(phy)
@@ -85,7 +88,7 @@ class Channel:
             # 모델에서 계산된 손실값 반영
             spec_rx_params.tx_power -= path_loss_db
 
-            # spec_rx_params.tx_power -= 0.000_000_1
+            spec_rx_params.tx_power -= self.additional_tx_power_loss
 
             # 수신 패킷 설정 완료
             packet_copy.set_spectrum_tx_params(spec_rx_params)
