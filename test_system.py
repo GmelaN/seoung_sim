@@ -1,3 +1,5 @@
+import logging
+
 import simpy
 from simpy.events import NORMAL
 
@@ -21,7 +23,7 @@ env = simpy.Environment()  # Create the SimPy environment
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
 # NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
 # simulation_time = 1
-NODE_COUNT = 1
+NODE_COUNT = 2
 
 # channel
 channel = Channel()      # All nodes share a channel environment
@@ -97,8 +99,6 @@ event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
 env.schedule(event, priority=NORMAL, delay=0)
 
 # Generate events (generate packet events)
-# agent.m_sscs.send_beacon(event=env)
-
 delay = 0.002
 
 def send_data(env):
@@ -114,6 +114,8 @@ event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
 env.schedule(event, priority=NORMAL, delay=delay)
+
+# agent.m_sscs.q_learning_trainer.turn_off()
 
 # Print statistical results
 # event = env.event()
@@ -148,6 +150,9 @@ event._ok = True
 
 
 event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
+event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
+
+event.callbacks.append(agent.m_sscs.print_q_table)
 
 env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
 

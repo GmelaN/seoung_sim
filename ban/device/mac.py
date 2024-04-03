@@ -517,7 +517,7 @@ class BanMac:
                 else:
                     BanMac.logger.log(
                         sim_time=self.get_env().now,
-                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] ERROR PROCESSING RX PACKET.",
+                        msg=f"{self.__class__.__name__}[{self.__mac_params.node_id}] ERROR PROCESSING RX PACKET: COUNTER ERROR",
                         level=logging.FATAL
                     )
                     self.__prev_tx_status = False   # mark the current Tx result as a fail
@@ -769,27 +769,25 @@ class BanMac:
         pass
 
 
-    def show_result(self, event:simpy.Environment | None = None, pbar: tqdm.tqdm | None = None, delay_interval: int = 1, total: bool = False):
-        if pbar is None and total is False:
+    def show_result(self, event:simpy.Environment | None = None, total: bool = False):
+        if total is False:
             output = (
                 f"NODE ID: {self.get_mac_params().node_id}\t"
-                f"REQUESTED PACKET COUNT: {self.get_tracer().get_requested_packet_count():5d}\t"
-                f"ENQUEUED PACKET COUNT: {self.get_tracer().get_enqueued_packet_count():5d}\t"
+                f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
+                f"ENQUEUED: {self.get_tracer().get_enqueued_packet_count():5d}\t"
                 f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\t"
                 f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
 
             )
-            print(output + " " * (80 - len(output)), end='\r')
-            return
 
-        if total is True:
+        else:
             output = (
-                f"NODE ID: {self.get_mac_params().node_id}\t"
-                f"REQUESTED PACKET COUNT: {self.get_tracer().get_requested_packet_count():5d}\t"
-                f"ENQUEUED PACKET COUNT: {self.get_tracer().get_enqueued_packet_count():5d}\t"
-                f"SUCCESS PACKET COUNT: {self.get_tracer().get_success_packet_count():5d}\t"
+                f"NODE: {self.get_mac_params().node_id}\t"
+                f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
+                f"ENQUEUED: {self.get_tracer().get_enqueued_packet_count():5d}\t"
+                f"SUCCESS: {self.get_tracer().get_success_packet_count():5d}\t"
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
                 f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
@@ -797,30 +795,13 @@ class BanMac:
 
             )
 
-            BanMac.logger.log(
-                sim_time=self.__env.now,
-                msg=output,
-                level=logging.FATAL,
-            )
+        BanMac.logger.log(
+            sim_time=self.__env.now,
+            msg=output,
+            level=logging.FATAL,
+        )
 
-            # print(output + " " * (80 - len(output)), end='\r')
-            return
-
-        else:
-            pbar.set_postfix(
-                node_id = f"{self.get_mac_params().node_id}",
-                packet_delivery_ratio = f'{round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%',
-                throughput = f"{round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps",
-                energy_consumption_ratio = f"{round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%"
-            )
-
-        # self.get_tracer().reset()
-        # event = self.get_env().event()
-        # event._ok = True
-        # event.callbacks.append(
-        #     lambda _: self.show_result(pbar=pbar, delay_interval=delay_interval)
-        # )
-        # self.get_env().schedule(event, priority=0, delay=delay_interval)
+        return
 
 
     def plme_cca_confirm(self, status: BanPhyTRxState):

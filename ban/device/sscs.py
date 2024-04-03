@@ -370,3 +370,30 @@ class BanSSCS:
     def reset_throughput(self):
         tracer: Tracer = self.mac.get_tracer()
         tracer.reset()
+
+
+    def print_q_table(self, env):
+        if self.q_learning_trainer.off:
+            return
+
+        q_table = self.q_learning_trainer.q_table
+
+        actions_string = ""
+        for i in range(len(self.q_learning_trainer.action_space) - 1):
+            actions_string += (f"ACTION_{i}" + '\t')
+
+        actions_string += (f"ACTION_UALLOC" + '\t')
+
+        string = f"Q_TABLE\n[MOVEMENT_PHASE\tTIME_SLOT_INDEX]\t{actions_string}\n"
+        for key in sorted(q_table.keys(), key=lambda x: x.phase.name):
+            values_string = ""
+            for i in q_table[key]:
+                values_string += (f"{i:.3f}" + '\t\t')
+
+            string += f"{key.phase.name}\t\t\tSLOT_{key.slot}\t\t\t\t{values_string}\n"
+
+        BanSSCS.logger.log(
+            sim_time=self.env.now,
+            msg=string,
+            level=logging.FATAL
+        )

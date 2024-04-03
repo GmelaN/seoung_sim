@@ -80,12 +80,20 @@ class QLearningTrainer:
 
         '''Q-LEARNING PARAMETERS'''
         self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))  # -1: unallocated
-        self.q_table = defaultdict(lambda: np.zeros(node_count + 1))  # "할당하지 않음" 포함
+        self.q_table = defaultdict(lambda: np.zeros(len(self.action_space)))  # "할당하지 않음" 포함
 
         '''initalize q_table(for first slot allocation)'''
         for phase in self.mobility_helper.phase_info.phases:
-            for node in range(1, node_count + 1):
-                self.q_table[State(phase, node)][node] = np.float32(0.00001)
+            for slot in range(time_slots):
+                self.q_table[State(phase, slot)] = np.zeros(len(self.action_space))
+                self.q_table[State(phase, slot)][slot] = np.float32(0.00001)
+
+        self.off = False
+
+
+    def turn_off(self):
+        self.off = True
+
 
     def choose_action(self, current_state: State) -> int:
         '''
@@ -94,7 +102,7 @@ class QLearningTrainer:
         '''
         # explore
         if np.random.rand() < self.exploration_rate:
-            action = self.action_space[np.random.randint(self.node_count)]
+            action = self.action_space[np.random.randint(len(self.action_space))]
 
         # exploit
         else:
@@ -105,6 +113,9 @@ class QLearningTrainer:
             msg=f"action is: {action}",
             level=logging.DEBUG
         )
+
+        assert action in self.action_space
+
         return action
 
 
@@ -115,28 +126,45 @@ class QLearningTrainer:
         :return next_state: next state
         '''
 
+        if current_state.slot + 1== self.time_slots:
+            return State(phase=current_state.phase, slot=-1)
+
         return State(phase=current_state.phase, slot=current_state.slot + 1)
 
 
     def update_q_table(self, current_state: State, action: int, reward: float, next_state: State):
+        if self.off:
+            return
+
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}",
             level=logging.INFO
         )
 
-        # 다음 행동 중 가장 가치가 큰 행동
-        best_next_action = np.argmax(self.q_table[next_state])
+        # 다음 행동 중 가장 가치가 큰 행동 선택
 
-        td_target = reward + self.discount_factor * self.q_table[next_state][best_next_action]
+        # 최종 행동(마지막 타임 슬롯)인 경우
+        if next_state.slot == -1:
+            td_target = reward
+        else:
+            best_next_action = np.argmax(self.q_table[next_state])
+            td_target = reward + self.discount_factor * self.q_table[next_state][best_next_action]
+
         td_delta = td_target - self.q_table[current_state][action]
+
         self.q_table[current_state][action] += self.learning_rate * td_delta
+
+        return
 
 
     def calculate_reward(self, action: int) -> float:
+        if self.off:
+            return 0
+
         # 할당되지 않은 슬롯 발견 시 약한 음의 보상
         if action == -1:
-            return -0.01
+            return -0.1
 
         throughput = self.get_throughput(action)
 
@@ -144,10 +172,15 @@ class QLearningTrainer:
         if throughput == 0:
             return -1 * self.get_node_priority(action)
 
-        return self.get_throughput(action) * self.get_node_priority(action)
+        reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
+
+        return reward
 
 
     def train(self, time_slot_index: int, allocated_node_id: int, mobility_phase: MovementPhase):
+        if self.off:
+            return
+
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"training, time slot: {time_slot_index}, allocated: {allocated_node_id}, phase: {mobility_phase.name}",
@@ -165,30 +198,19 @@ class QLearningTrainer:
 
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
+        if self.off:
+            return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
+
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
 
         state: State = State(phase=phase, slot=0)
 
         for i in range(self.time_slots):
-            # node: int = np.argmax(self.q_table[state]) - 1
-            # TODO: 검증
-            # if node == 0:
-            #     node = -1
-
             node: int = self.choose_action(current_state=state)
 
             time_slots[i] = node
             state = State(phase=state.phase, slot=state.slot + 1)
-
-        # 타임 슬롯이 모두 빈 경우 - 기본값으로 설정
-        # if max(time_slots) == -1:
-        #     time_slots = [i + 1 for i in range(self.time_slots)]
-        #     QLearningTrainer.logger.log(
-        #         sim_time=self.sscs.env.now,
-        #         msg=f"COORDINATOR: falling back to default time slot allocation because generated time slots is empty.",
-        #         level=logging.WARN
-        #     )
 
         # TODO: 스루풋 초기화 시점
         self.reset_throughput()
