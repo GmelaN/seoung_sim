@@ -7,9 +7,10 @@ import random
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
+from ban.config.JSONConfig import JSONConfig
 
-MOVEMENT_CYCLE = 0.5                # seconds
-RANGE = 0
+MOVEMENT_CYCLE = float(JSONConfig.get_config("movement_cycle")) # seconds
+RANGE = int(JSONConfig.get_config("movement_range"))
 
 
 class MovementPhase(enum.Enum):
