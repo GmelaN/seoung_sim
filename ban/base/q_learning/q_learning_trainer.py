@@ -84,8 +84,16 @@ class QLearningTrainer:
 
         '''initalize q_table(for first slot allocation)'''
         for phase in self.mobility_helper.phase_info.phases:
-            for node in range(1, node_count + 1):
-                self.q_table[State(phase, node)][node] = np.float32(0.00001)
+            for slot in range(time_slots):
+                self.q_table[State(phase, slot)] = np.zeros(len(self.action_space))
+                self.q_table[State(phase, slot)][slot] = np.float32(0.00001)
+
+        self.off = False
+
+
+    def turn_off(self):
+        self.off = True
+
 
     def choose_action(self, current_state: State) -> int:
         '''
@@ -125,6 +133,9 @@ class QLearningTrainer:
 
 
     def update_q_table(self, current_state: State, action: int, reward: float, next_state: State):
+        if self.off:
+            return
+
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}",
@@ -148,6 +159,9 @@ class QLearningTrainer:
 
 
     def calculate_reward(self, action: int) -> float:
+        if self.off:
+            return 0
+
         # 할당되지 않은 슬롯 발견 시 약한 음의 보상
         if action == -1:
             return -0.1
@@ -164,6 +178,9 @@ class QLearningTrainer:
 
 
     def train(self, time_slot_index: int, allocated_node_id: int, mobility_phase: MovementPhase):
+        if self.off:
+            return
+
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg=f"training, time slot: {time_slot_index}, allocated: {allocated_node_id}, phase: {mobility_phase.name}",
@@ -181,6 +198,9 @@ class QLearningTrainer:
 
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
+        if self.off:
+            return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
+
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
 
