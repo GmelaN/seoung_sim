@@ -78,14 +78,23 @@ class QLearningTrainer:
         self.movement_phases: MovementPhase = movement_phases
 
         '''Q-LEARNING PARAMETERS'''
-        self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))  # -1: unallocated
+        self.use_unallocated = bool(JSONConfig.get_config("use_unallocated"))
+
+        if self.use_unallocated:
+            self.action_space: tuple[int, ...] = tuple(i for i in range(-1, self.node_count, 1))  # -1: unallocated
+        else:
+            self.action_space: tuple[int, ...] = tuple(i for i in range(self.node_count))
+
         self.q_table = defaultdict(lambda: np.zeros(len(self.action_space)))  # "할당하지 않음" 포함
 
         '''initalize q_table(for first slot allocation)'''
         for phase in self.mobility_helper.phase_info.phases:
             for slot in range(time_slots):
                 self.q_table[State(phase, slot)] = np.zeros(len(self.action_space))
-                self.q_table[State(phase, slot)][slot + 1] = np.float32(0.00001)
+                if self.use_unallocated:
+                    self.q_table[State(phase, slot)][slot + 1] = np.float32(0.00001)
+                else:
+                    self.q_table[State(phase, slot)][slot] = np.float32(0.00001)
 
         self.off = False
         self.first = True
