@@ -24,3 +24,5 @@ ban/device/__pycache__/sscs.cpython-311.pyc
 .vscode/settings.json
 .idea/jupyter-settings.xml
 ban/base/q_learning/__pycache__/q_learning_trainer.cpython-311.pyc
+result_q_learning.txt
+result_vanilla.txt
