@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 import simpy
 from simpy.events import NORMAL
 
@@ -21,6 +23,8 @@ env = simpy.Environment()  # Create the SimPy environment
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
 NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
 
+WEIGHT = int(JSONConfig.get_config("priority_weight"))
+
 use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
 # channel
@@ -38,7 +42,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+0.5 for i in range(NODE_COUNT)),
+        node_priority=tuple(i+WEIGHT for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -92,15 +96,8 @@ for i, position in enumerate(mobility_positions):
 if not use_q_learning:
     agent.m_sscs.q_learning_trainer.turn_off()
 
-# Generate events (generate mobility)
-event = env.event()
-event._ok = True
-event.callbacks.append(mobility_helper.do_walking)
-event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
-env.schedule(event, priority=NORMAL, delay=0)
 
-delay = 0.002
-
+'''GENERATE EVENTS'''
 def send_data(env):
     for node in nodes:
         packet: Packet = Packet(packet_size=int(JSONConfig.get_config("packet_size")))
@@ -110,45 +107,66 @@ def send_data(env):
         packet.set_mac_header_(mac_header=mac_header)
         node.m_sscs.send_data(packet)
 
+# Generate events (generate mobility)
+event = env.event()
+event._ok = True
+event.callbacks.append(mobility_helper.do_walking)
+event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
+env.schedule(event, priority=NORMAL, delay=0)
+
+delay = 0.002
 event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
 env.schedule(event, priority=NORMAL, delay=delay)
 
-
 # Print statistical results
-# event = env.event()
-# event._ok = True
-# for node in nodes:
-#     event.callbacks.append(node.m_mac.show_result)
-# env.schedule(event, priority=NORMAL, delay=10)
+
+result: list[dict] = [dict() for _ in range(NODE_COUNT)]
+
+def show_result(env):
+    for i in range(NODE_COUNT):
+        result[i] = nodes[i].m_mac.show_result(total=True)
+
+    config: str = ""
+    with open("./config.json", 'r', encoding="UTF8") as f:
+        for i in f.readlines():
+            config += i
+
+    string = "q_learning" if JSONConfig.get_config("use_q_learning") else "vanilla"
+
+    with open(f"result_{string}.txt", 'w', encoding="UTF8") as f:
+        for k in result[0].keys():
+            f.write(f"{str(k):>20}")
+
+        f.write('\n')
+
+        for i in result:
+            for j in i.keys():
+                f.write(f"{i[j]:>20.3f}")
+
+            f.write('\n')
+
+        f.write(config)
 
 
-# Run simulation
-
-# Print statistical results
 event = env.event()
 event._ok = True
+# event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
+# event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
 
-# for node in range(len(nodes)):
-#     event = env.event()
-#     event._ok = True
-#     event.callbacks.append(lambda _: nodes[node].m_mac.show_result(total=True))
-#     env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
-
-
-event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
+event.callbacks.append(show_result)
 event.callbacks.append(agent.m_sscs.print_q_table)
-
 env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
 
+
+'''RUN SIMULATION'''
 env.run(until=simulation_time)
 
 

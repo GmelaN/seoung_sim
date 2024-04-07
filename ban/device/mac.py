@@ -770,7 +770,21 @@ class BanMac:
 
 
     def show_result(self, event:simpy.Environment | None = None, total: bool = False):
+        result = {
+            "request": 0,
+            "enqueued": 0,
+            "success": 0,
+            "throughput": 0,
+            "energy_cosumption_r": 0
+        }
+
         if total is False:
+            result["request"] = self.get_tracer().get_requested_packet_count()
+            result["enqueued"] = self.get_tracer().get_enqueued_packet_count()
+            result["success"] = self.get_tracer().get_transaction_count()
+            result["throughput"] = round(self.get_tracer().get_throughput() / 1000, 3)
+            result["energy_cosumption_r"] = round(self.get_tracer().get_energy_consumption_ratio(), 3)
+
             output = (
                 f"NODE ID: {self.get_mac_params().node_id}\t"
                 f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
@@ -779,20 +793,29 @@ class BanMac:
                 f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(), 2) * 100:.3f}%\t'
                 f"THROUGHPUT: {round(self.get_tracer().get_throughput() / 1000, 3):.3f} kbps\t"
                 f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
-
             )
 
         else:
+            result["request"] = self.get_tracer().get_requested_packet_count()
+            result["enqueued"] = self.get_tracer().get_enqueued_packet_count()
+            result["success"] = self.get_tracer().get_transaction_count()
+            result["throughput"] = round(self.get_tracer().get_throughput(total=True) / 1000, 3)
+            result["energy_cosumption_r"] = round(self.get_tracer().get_energy_consumption_ratio(), 3)
+
+            # output = (
+            #     f"NODE: {self.get_mac_params().node_id}\t"
+            #     f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
+            #     f"ENQUEUED: {self.get_tracer().get_enqueued_packet_count():5d}\t"
+            #     f"SUCCESS: {self.get_tracer().get_success_packet_count():5d}\t"
+            #     f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
+            #     f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
+            #     f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
+            #     f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
+            # )
+
             output = (
                 f"NODE: {self.get_mac_params().node_id}\t"
-                f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
-                f"ENQUEUED: {self.get_tracer().get_enqueued_packet_count():5d}\t"
-                f"SUCCESS: {self.get_tracer().get_success_packet_count():5d}\t"
-                f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
-                f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
-                f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
-                f"ENERGY CONSUMPTION RATIO: {round(self.get_tracer().get_energy_consumption_ratio(), 3):.3f}%\n"
-
+                f"REQ / ENQUE / OK\t{self.get_tracer().get_requested_packet_count():5d} / {self.get_tracer().get_enqueued_packet_count():5d} / {self.get_tracer().get_success_packet_count():5d}"
             )
 
         BanMac.logger.log(
@@ -801,7 +824,7 @@ class BanMac:
             level=logging.FATAL,
         )
 
-        return
+        return result
 
 
     def plme_cca_confirm(self, status: BanPhyTRxState):
