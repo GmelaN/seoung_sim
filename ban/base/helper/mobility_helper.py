@@ -11,8 +11,8 @@ from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
 from ban.config.JSONConfig import JSONConfig
 
-MOVEMENT_CYCLE = float(JSONConfig.get_config("movement_cycle")) # seconds
-VELOCITY = int(JSONConfig.get_config("velocity"))
+MOVEMENT_CYCLE = 0.5
+VELOCITY = 5
 
 RANGE = float(JSONConfig.get_config("movement_noise"))
 
@@ -38,14 +38,14 @@ class MobilityHelper:
         self.env = env
 
         self.left_hand_direction = 1
-        self.left_hand_degree = -160
+        self.left_hand_degree = -180
         self.right_hand_direction = -1
-        self.right_hand_degree = 170
+        self.right_hand_degree = 180
 
         self.left_leg_direction = -1
-        self.left_leg_degree = 110
+        self.left_leg_degree = 180
         self.right_leg_direction = 1
-        self.right_leg_degree = -100
+        self.right_leg_degree = -180
 
         self.movement_cycle = MOVEMENT_CYCLE     # seconds
         # self.velocity = 10                      # m/s
@@ -78,11 +78,13 @@ class MobilityHelper:
 
         # 현재 모빌리티 정보
         self.current_phase = MovementPhase.PHASE_0
+        self.count = 0
 
 
     def add_mobility_list(self, mobility: MobilityModel):
         self.mobility_list.append(mobility)
         self.update_position()
+
 
     def do_walking(self, event):
         self.move_left_hand()
@@ -93,21 +95,24 @@ class MobilityHelper:
         self.update_position()
 
         # 현재 페이즈 정보 업데이트
-        next_phase: MovementPhase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
+        if self.count == 22:
+            next_phase: MovementPhase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
 
-        MobilityHelper.logger.log(
-            sim_time=self.env.now,
-            msg=f"Mobility movement phase set from: {self.current_phase} to: {next_phase}",
-            level=logging.INFO
-        )
+            MobilityHelper.logger.log(
+                sim_time=self.env.now,
+                msg=f"Mobility movement phase set from: {self.current_phase} to: {next_phase}",
+                level=logging.INFO
+            )
 
-        self.current_phase = next_phase
+            self.current_phase = next_phase
+            self.count = 0
 
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.do_walking)
         # self.env.schedule(event, priority=0, delay=self.movement_cycle - 0.00001)
-        self.env.schedule(event, priority=0, delay=0.001)
+        self.env.schedule(event, priority=0, delay=0.5 / 22)
+        self.count += 1
 
     def move_left_hand(self):
         if self.left_hand_direction == 1:
@@ -117,6 +122,7 @@ class MobilityHelper:
                 self.left_hand_direction = -1
             else:
                 self.left_hand_degree += self.velocity
+
         elif self.left_hand_direction == -1:
             if self.left_hand_degree - self.velocity < -180:
                 self.left_hand_degree = 180
@@ -156,6 +162,7 @@ class MobilityHelper:
                 self.right_hand_direction = -1
             else:
                 self.right_hand_degree += self.velocity
+
         elif self.right_hand_direction == -1:
             if self.right_hand_degree - self.velocity < -180:
                 self.right_hand_degree = 180
@@ -191,14 +198,15 @@ class MobilityHelper:
         if self.left_leg_direction == 1:
             if self.left_leg_degree + self.velocity > 180:
                 self.left_leg_degree = -180
-            elif self.left_leg_degree < 0 and self.left_leg_degree + self.velocity > -50:
+            elif self.left_leg_degree < 0 and self.left_leg_degree + self.velocity > -90:
                 self.left_leg_direction = -1
             else:
                 self.left_leg_degree += self.velocity
+
         elif self.left_leg_direction == -1:
             if self.left_leg_degree - self.velocity < -180:
                 self.left_leg_degree = 180
-            elif self.left_leg_degree > 0 and self.left_leg_degree + self.velocity < 50:
+            elif self.left_leg_degree > 0 and self.left_leg_degree + self.velocity < 90:
                 self.left_leg_direction = 1
             else:
                 self.left_leg_degree -= self.velocity
@@ -224,14 +232,15 @@ class MobilityHelper:
         if self.right_leg_direction == 1:
             if self.right_leg_degree + self.velocity > 180:
                 self.right_leg_degree = -180
-            elif self.right_leg_degree < 0 and self.right_leg_degree + self.velocity > -50:
+            elif self.right_leg_degree < 0 and self.right_leg_degree + self.velocity > -90:
                 self.right_leg_direction = -1
             else:
                 self.right_leg_degree += self.velocity
+
         elif self.right_leg_direction == -1:
             if self.right_leg_degree - self.velocity < -180:
                 self.right_leg_degree = 180
-            elif self.right_leg_degree > 0 and self.right_leg_degree + self.velocity < 50:
+            elif self.right_leg_degree > 0 and self.right_leg_degree + self.velocity < 90:
                 self.right_leg_direction = 1
             else:
                 self.right_leg_degree -= self.velocity
