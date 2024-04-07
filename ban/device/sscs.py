@@ -248,7 +248,7 @@ class BanSSCS:
             sim_time=self.env.now,
             msg=
             f"{self.__class__.__name__}[{self.tx_params.node_id}] time slot configuration is: {slots}",
-            level=logging.CRITICAL
+            level=logging.INFO
         )
 
         for time_slot_index, node_id in enumerate(slots):
