@@ -26,3 +26,4 @@ ban/device/__pycache__/sscs.cpython-311.pyc
 ban/base/q_learning/__pycache__/q_learning_trainer.cpython-311.pyc
 result_q_learning.txt
 result_vanilla.txt
+__pycache__/test.cpython-311.pyc
