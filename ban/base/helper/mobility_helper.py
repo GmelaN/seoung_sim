@@ -106,7 +106,8 @@ class MobilityHelper:
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.do_walking)
-        self.env.schedule(event, priority=0, delay=self.movement_cycle - 0.00001)
+        # self.env.schedule(event, priority=0, delay=self.movement_cycle - 0.00001)
+        self.env.schedule(event, priority=0, delay=0.001)
 
     def move_left_hand(self):
         if self.left_hand_direction == 1:
@@ -223,14 +224,14 @@ class MobilityHelper:
         if self.right_leg_direction == 1:
             if self.right_leg_degree + self.velocity > 180:
                 self.right_leg_degree = -180
-            elif self.right_leg_degree < 0 and self.left_leg_degree + self.velocity > -50:
+            elif self.right_leg_degree < 0 and self.right_leg_degree + self.velocity > -50:
                 self.right_leg_direction = -1
             else:
                 self.right_leg_degree += self.velocity
         elif self.right_leg_direction == -1:
             if self.right_leg_degree - self.velocity < -180:
                 self.right_leg_degree = 180
-            elif self.right_leg_degree > 0 and self.left_leg_degree + self.velocity < 50:
+            elif self.right_leg_degree > 0 and self.right_leg_degree + self.velocity < 50:
                 self.right_leg_direction = 1
             else:
                 self.right_leg_degree -= self.velocity
