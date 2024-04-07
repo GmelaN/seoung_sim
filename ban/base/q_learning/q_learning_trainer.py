@@ -10,7 +10,6 @@ np.random.seed(42)
 
 from dataclasses import dataclass
 
-from tqdm.auto import tqdm
 
 from ban.base.helper.mobility_helper import MovementPhase, MobilityHelper
 from ban.base.logging.log import SeoungSimLogger
@@ -86,9 +85,10 @@ class QLearningTrainer:
         for phase in self.mobility_helper.phase_info.phases:
             for slot in range(time_slots):
                 self.q_table[State(phase, slot)] = np.zeros(len(self.action_space))
-                self.q_table[State(phase, slot)][slot] = np.float32(0.00001)
+                self.q_table[State(phase, slot)][slot + 1] = np.float32(0.00001)
 
         self.off = False
+        self.first = True
 
 
     def turn_off(self):
@@ -101,7 +101,7 @@ class QLearningTrainer:
         :return action
         '''
         # explore
-        if np.random.rand() < self.exploration_rate:
+        if not self.first and np.random.rand() < self.exploration_rate:
             action = self.action_space[np.random.randint(len(self.action_space))]
 
         # exploit
@@ -126,7 +126,7 @@ class QLearningTrainer:
         :return next_state: next state
         '''
 
-        if current_state.slot + 1== self.time_slots:
+        if current_state.slot + 1 == self.time_slots:
             return State(phase=current_state.phase, slot=-1)
 
         return State(phase=current_state.phase, slot=current_state.slot + 1)
@@ -214,6 +214,8 @@ class QLearningTrainer:
 
         # TODO: 스루풋 초기화 시점
         self.reset_throughput()
+        self.first = False
+
 
         return time_slots
 
