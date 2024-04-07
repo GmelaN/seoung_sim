@@ -10,8 +10,9 @@ from ban.base.positioning import Vector
 from ban.config.JSONConfig import JSONConfig
 
 MOVEMENT_CYCLE = float(JSONConfig.get_config("movement_cycle")) # seconds
-RANGE = int(JSONConfig.get_config("movement_range"))
+VELOCITY = int(JSONConfig.get_config("velocity"))
 
+RANGE = float(JSONConfig.get_config("movement_noise"))
 
 class MovementPhase(enum.Enum):
     PHASE_0: int = 0
@@ -22,10 +23,10 @@ class MovementPhase(enum.Enum):
 @dataclasses.dataclass
 class MovementInfo:
     # Phase의 수 -> 전체 페이즈의 수도 알 수 있음
-    phases: tuple[MovementPhase] = tuple(MovementPhase)
+    phases: tuple[MovementPhase, ...] = tuple(MovementPhase)
 
     # 각 페이즈의 기간 정보 -> 한 전체 주기의 정보도 알 수 있음 (seconds)
-    phase_duration: tuple[float] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
+    phase_duration: tuple[float, ...] = tuple(MOVEMENT_CYCLE for _ in range(len(phases)))
 
 
 class MobilityHelper:
@@ -45,11 +46,12 @@ class MobilityHelper:
         self.right_leg_degree = -100
 
         self.movement_cycle = MOVEMENT_CYCLE     # seconds
-        self.velocity = 0.5                      # m/s
+        # self.velocity = 10                      # m/s
+        self.velocity = VELOCITY                      # m/s
 
         # static position
         self.head = Vector(1.1, 1.8, 1)                 # x, y, z
-        self.body = Vector(1.1, 1.3, 1)
+        self.body = Vector(1.1, 1.5, 1)
         self.left_upper_torso = Vector(1, 1.3, 1)
         self.left_lower_torso = Vector(1, 1, 1)         # base position
         self.right_upper_torso = Vector(1.2, 1.3, 1)
@@ -258,7 +260,7 @@ class MobilityHelper:
         for mob_list in self.mobility_list:
             if mob_list.get_body_position() == BodyPosition.HEAD:
                 mob_list.set_position(self.head)
-            elif mob_list.get_body_position == BodyPosition.BODY:
+            elif mob_list.get_body_position() == BodyPosition.BODY:
                 mob_list.set_position(self.body)
             elif mob_list.get_body_position() == BodyPosition.LEFT_UPPER_TORSO:
                 mob_list.set_position(self.left_upper_torso)
