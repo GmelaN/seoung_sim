@@ -4,6 +4,8 @@ import logging
 import math
 import random
 
+random.seed(42)
+
 from ban.base.logging.log import SeoungSimLogger
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.positioning import Vector
