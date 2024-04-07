@@ -17,6 +17,7 @@ from ban.base.q_learning.q_learning_trainer import QLearningTrainer
 
 from ban.base.tracer import Tracer
 
+
 class BanTxOption(Enum):
     TX_OPTION_NONE = 0
     TX_OPTION_ACK = 1
@@ -93,6 +94,8 @@ class BanSSCS:
                 time_slots=BanSSCS.NUM_SLOTS,
                 tracers=tracers
             )
+
+            self.tx_powers = (-10, -5, -10, -5, 0, 0, 0, 0)
 
             self.current_time_slot_index: int = 0
 
@@ -257,15 +260,15 @@ class BanSSCS:
                 assigned_link.allocation_id = node_id
                 assigned_link.interval_start = start_offset
                 assigned_link.interval_end = num_slot
-                assigned_link.tx_power = self.tx_power
+                assigned_link.tx_power = self.tx_powers[node_id]
                 assigned_link.time_slot_index = time_slot_index
 
                 tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
             BanSSCS.logger.log(
                 sim_time=self.env.now,
-                msg=f"configuring time slots...{time_slot_index}",
-                level=logging.DEBUG
+                msg=f"configuring time slots...{time_slot_index}, node id: {node_id}, tx_power: {self.tx_powers[node_id]}",
+                level=logging.INFO
             )
 
             self.time_slots.append(
@@ -347,7 +350,7 @@ class BanSSCS:
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.env.schedule(event, priority=NORMAL, delay=0.4)
+        self.env.schedule(event, priority=NORMAL, delay=0.2)
 
 
     def get_data(self):
@@ -379,10 +382,16 @@ class BanSSCS:
         q_table = self.q_learning_trainer.q_table
 
         actions_string = ""
-        for i in range(len(self.q_learning_trainer.action_space) - 1):
-            actions_string += (f"ACTION_{i}" + '\t')
+        if bool(JSONConfig.get_config("use_unallocated")):
+            for i in range(len(self.q_learning_trainer.action_space) - 1):
+                actions_string += (f"ACTION_{i}" + '\t')
 
-        actions_string += (f"ACTION_UALLOC" + '\t')
+            actions_string += (f"ACTION_UALLOC" + '\t')
+        
+        else:
+            for i in range(len(self.q_learning_trainer.action_space)):
+                actions_string += (f"ACTION_{i}" + '\t')
+
 
         string = f"Q_TABLE\n[MOVEMENT_PHASE\tTIME_SLOT_INDEX]\t{actions_string}\n"
         for key in sorted(q_table.keys(), key=lambda x: x.phase.name):
