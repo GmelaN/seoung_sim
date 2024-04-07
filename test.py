@@ -21,6 +21,8 @@ env = simpy.Environment()  # Create the SimPy environment
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
 NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
 
+use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
+
 # channel
 channel = Channel()      # All nodes share a channel environment
 channel.set_env(env)
@@ -36,7 +38,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+1 for i in range(NODE_COUNT)),
+        node_priority=tuple(i+0.5 for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -87,7 +89,8 @@ for i, position in enumerate(mobility_positions):
 
     agent.m_sscs.set_node_list(i)
 
-# agent.m_sscs.q_learning_trainer.turn_off()
+if not use_q_learning:
+    agent.m_sscs.q_learning_trainer.turn_off()
 
 # Generate events (generate mobility)
 event = env.event()
