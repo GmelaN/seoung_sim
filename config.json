@@ -1,8 +1,8 @@
 {
   "learning_rate": 0.5,
   "discount_factor": 0.9,
-  "exploration_rate": 0.8,
-  "time_slots": 8,
+  "exploration_rate": 0.5,
+  "time_slots": 5,
   "slot_duration": 1,
 
   "simulation_time": 1000,
@@ -12,12 +12,13 @@
 
   "log_level": "CRITICAL",
 
-  "movement_noise": 0.05,
+  "movement_noise": 0,
 
-  "additional_tx_loss": 16.5,
+  "additional_tx_loss": 15,
 
-  "use_q_learning": false,
+  "use_q_learning": true,
 
   "priority_weight": 1,
-  "use_unallocated": false
+  "use_unallocated": false,
+  "initial_delay": 40
 }
