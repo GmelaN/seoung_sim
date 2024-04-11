@@ -7,6 +7,7 @@ from typing import Dict
 import numpy as np
 
 np.random.seed(42)
+random.seed(42)
 
 from dataclasses import dataclass
 
@@ -208,7 +209,8 @@ class QLearningTrainer:
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
         if self.off:
-            return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
+            return random.sample([i for i in range(self.node_count)], self.time_slots)
+            # return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
 
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
