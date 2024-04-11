@@ -25,6 +25,8 @@ NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinat
 
 WEIGHT = int(JSONConfig.get_config("priority_weight"))
 
+INITIAL_DELAY = int(JSONConfig.get_config("initial_delay"))
+
 use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
 # channel
@@ -35,6 +37,7 @@ prop_loss_model.set_frequency(0.915e9)  # We assume the wireless channel operate
 prop_delay_model = PropDelayModel()
 channel.set_loss_model(prop_loss_model)
 channel.set_delay_model(prop_delay_model)
+
 
 COORDINATOR_ID = 99
 
@@ -107,23 +110,28 @@ def send_data(env):
         packet.set_mac_header_(mac_header=mac_header)
         node.m_sscs.send_data(packet)
 
-# Generate events (generate mobility)
+'''do_walking event'''
 event = env.event()
 event._ok = True
 event.callbacks.append(mobility_helper.do_walking)
-event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
 env.schedule(event, priority=NORMAL, delay=0)
 
+'''send_beacon event'''
+event = env.event()
+event._ok = True
+event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
+env.schedule(event, priority=NORMAL, delay=0 + INITIAL_DELAY)
+
+'''send_data event'''
 delay = 0.002
 event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
-env.schedule(event, priority=NORMAL, delay=delay)
+env.schedule(event, priority=NORMAL, delay=delay + INITIAL_DELAY)
 
-# Print statistical results
 
+'''show result event'''
 result: list[dict] = [dict() for _ in range(NODE_COUNT)]
-
 def show_result(env):
     for i in range(NODE_COUNT):
         result[i] = nodes[i].m_mac.show_result(total=True)
@@ -152,21 +160,10 @@ def show_result(env):
 
 event = env.event()
 event._ok = True
-# event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[2].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[3].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[4].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[5].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[6].m_mac.show_result(total=True))
-# event.callbacks.append(lambda _: nodes[7].m_mac.show_result(total=True))
-
 event.callbacks.append(show_result)
 event.callbacks.append(agent.m_sscs.print_q_table)
-env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
+env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001 + INITIAL_DELAY)
 
 
 '''RUN SIMULATION'''
-env.run(until=simulation_time)
-
-
+env.run(until=simulation_time + INITIAL_DELAY)
