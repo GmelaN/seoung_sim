@@ -16,7 +16,7 @@ VELOCITY = 5
 
 RANGE = float(JSONConfig.get_config("movement_noise"))
 
-SAMPLE_RATE = float(JSONConfig.get_config("sample_rate"))
+SAMPLE_RATE = int(JSONConfig.get_config("sample_rate"))
 
 class MovementPhase(enum.Enum):
     PHASE_0: int = 0
