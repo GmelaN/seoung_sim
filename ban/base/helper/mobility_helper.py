@@ -16,6 +16,8 @@ VELOCITY = 5
 
 RANGE = float(JSONConfig.get_config("movement_noise"))
 
+SAMPLE_RATE = float(JSONConfig.get_config("sample_rate"))
+
 class MovementPhase(enum.Enum):
     PHASE_0: int = 0
     PHASE_1: int = 1
@@ -78,7 +80,7 @@ class MobilityHelper:
 
         # 현재 모빌리티 정보
         self.current_phase = MovementPhase.PHASE_0
-        self.count = 0
+        self.count = 1
 
 
     def add_mobility_list(self, mobility: MobilityModel):
@@ -95,7 +97,7 @@ class MobilityHelper:
         self.update_position()
 
         # 현재 페이즈 정보 업데이트
-        if self.count == 22:
+        if self.count == SAMPLE_RATE:
             next_phase: MovementPhase = MovementPhase.PHASE_1 if self.current_phase == MovementPhase.PHASE_0 else MovementPhase.PHASE_0
 
             MobilityHelper.logger.log(
@@ -105,14 +107,13 @@ class MobilityHelper:
             )
 
             self.current_phase = next_phase
-            self.count = 0
+            self.count = 1
 
         event = self.env.event()
         event._ok = True
         event.callbacks.append(self.do_walking)
         # self.env.schedule(event, priority=0, delay=self.movement_cycle - 0.00001)
-        self.env.schedule(event, priority=0, delay=0.5 / 22)
-        self.count += 1
+        self.env.schedule(event, priority=0, delay=0.5 / SAMPLE_RATE)
 
     def move_left_hand(self):
         if self.left_hand_direction == 1:
