@@ -1,4 +1,4 @@
-import logging
+from collections import namedtuple
 
 import simpy
 from simpy.events import NORMAL
@@ -21,9 +21,13 @@ env = simpy.Environment()  # Create the SimPy environment
 
 '''SET SIMULATION PARAMETERS'''
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
-# NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
-# simulation_time = 1
-NODE_COUNT = 2
+NODE_COUNT = 1
+
+WEIGHT = int(JSONConfig.get_config("priority_weight"))
+
+INITIAL_DELAY = int(JSONConfig.get_config("initial_delay"))
+
+use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
 # channel
 channel = Channel()      # All nodes share a channel environment
@@ -40,7 +44,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+10 for i in range(NODE_COUNT)),
+        node_priority=tuple(i+WEIGHT for i in range(NODE_COUNT)),
         coordinator=True,
         tracers=tracers
     )
@@ -91,16 +95,11 @@ for i, position in enumerate(mobility_positions):
 
     agent.m_sscs.set_node_list(i)
 
-# Generate events (generate mobility)
-event = env.event()
-event._ok = True
-event.callbacks.append(mobility_helper.do_walking)
-event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
-env.schedule(event, priority=NORMAL, delay=0)
+if not use_q_learning:
+    agent.m_sscs.q_learning_trainer.turn_off()
 
-# Generate events (generate packet events)
-delay = 0.002
 
+'''GENERATE EVENTS'''
 def send_data(env):
     for node in nodes:
         packet: Packet = Packet(packet_size=int(JSONConfig.get_config("packet_size")))
@@ -110,52 +109,39 @@ def send_data(env):
         packet.set_mac_header_(mac_header=mac_header)
         node.m_sscs.send_data(packet)
 
+'''do_walking event'''
+event = env.event()
+event._ok = True
+event.callbacks.append(mobility_helper.do_walking)
+env.schedule(event, priority=NORMAL, delay=0)
+
+'''send_beacon event'''
+event = env.event()
+event._ok = True
+event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
+env.schedule(event, priority=NORMAL, delay=0 + INITIAL_DELAY)
+
+'''send_data event'''
+delay = 0.001
 event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
-env.schedule(event, priority=NORMAL, delay=delay)
-
-# agent.m_sscs.q_learning_trainer.turn_off()
-
-# Print statistical results
-# event = env.event()
-# event._ok = True
-# for node in nodes:
-#     event.callbacks.append(node.m_mac.show_result)
-# env.schedule(event, priority=NORMAL, delay=10)
+env.schedule(event, priority=NORMAL, delay=delay + INITIAL_DELAY)
 
 
-# pbar = tqdm(total=simulation_time - 1)
-#
-# def update_pbar(ev=None):
-#     event = env.event()
-#     event._ok = True
-#     event.callbacks.append(lambda _: pbar.update(1))
-#     event.callbacks.append(update_pbar)
-#     env.schedule(event, priority=NORMAL, delay=1)
-#
-# update_pbar()
+'''show result event'''
+result: list[dict] = [dict() for _ in range(NODE_COUNT)]
+def show_result(env):
+    for i in range(NODE_COUNT):
+        result[i] = nodes[i].m_mac.show_result(total=True)
 
-# Run simulation
 
-# Print statistical results
 event = env.event()
 event._ok = True
-
-# for node in range(len(nodes)):
-#     event = env.event()
-#     event._ok = True
-#     event.callbacks.append(lambda _: nodes[node].m_mac.show_result(total=True))
-#     env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
-
-
-event.callbacks.append(lambda _: nodes[0].m_mac.show_result(total=True))
-event.callbacks.append(lambda _: nodes[1].m_mac.show_result(total=True))
-
+event.callbacks.append(show_result)
 event.callbacks.append(agent.m_sscs.print_q_table)
-
-env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
-
-env.run(until=simulation_time)
+env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001 + INITIAL_DELAY)
 
 
+'''RUN SIMULATION'''
+env.run(until=simulation_time + INITIAL_DELAY)
