@@ -102,7 +102,7 @@ class BanSSCS:
         # self.logger = logging.getLogger("BAN-SSCS")
 
         # 단위는 초 단위
-        self.beacon_interval: float = milliseconds(255)  # ms
+        self.beacon_interval: float = milliseconds(float(JSONConfig.get_config("beacon_interval")))  # ms
 
         self.coordinator: bool = coordinator
 
