@@ -4,7 +4,9 @@ from simpy import Environment
 
 from ban.base.channel.base_channel import DelayModel, LossModel, SpectrumSignalParameters
 from ban.base.logging.log import SeoungSimLogger
+from ban.base.mobility import BodyPosition, MobilityModel
 from ban.base.packet import Packet
+from ban.base.positioning import Vector
 from ban.config.JSONConfig import JSONConfig
 
 
@@ -68,10 +70,28 @@ class Channel:
                 # if the sender is the receiver, skip the transmission
                 continue
 
-            receiver_mobility = receiver.get_mobility()
-
+            receiver_mobility: MobilityModel = receiver.get_mobility()
             if receiver_mobility is None:
                 raise Exception("mobility model is not set.")
+
+            # LOS 미확보 여부 계산
+            body_pos: BodyPosition = receiver_mobility.body_position
+            node_pos: Vector = receiver_mobility.get_position()
+            if body_pos == BodyPosition.LEFT_ELBOW or body_pos == BodyPosition.RIGHT_ELBOW:
+                if node_pos.y > 1.6 and 0.7 <= node_pos.z <= 0.8:
+                    continue
+
+            if body_pos == BodyPosition.LEFT_WRIST or body_pos == BodyPosition.RIGHT_WRIST:
+                if node_pos.y > 1.6 and 0.5 <= node_pos.z <= 0.6:
+                    continue
+
+            if body_pos == BodyPosition.LEFT_KNEE or body_pos == BodyPosition.RIGHT_KNEE:
+                if node_pos.y > 0.95 and 0.7 <= node_pos.z <= 0.8:
+                    continue
+
+            if body_pos == BodyPosition.LEFT_ANKLE or body_pos == BodyPosition.RIGHT_ANKLE:
+                if node_pos.y > 1.0 and 0.5 <= node_pos.z <= 0.6:
+                    continue
 
             # 패킷 손실, 지연 계산
             path_loss_db = self.__loss_model.calculate_path_loss(sender_mobility, receiver_mobility)
