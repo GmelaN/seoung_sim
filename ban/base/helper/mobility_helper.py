@@ -95,6 +95,13 @@ class MobilityHelper:
         self.move_right_leg()
 
         self.update_position()
+        self.count += 1
+
+        MobilityHelper.logger.log(
+            sim_time=self.env.now,
+            msg=f"Mobility phase is now {self.count} / {SAMPLE_RATE}",
+            level=logging.DEBUG
+        )
 
         # 현재 페이즈 정보 업데이트
         if self.count == SAMPLE_RATE:
