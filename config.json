@@ -5,7 +5,7 @@
   "time_slots": 8,
   "slot_duration": 1,
 
-  "simulation_time": 1000,
+  "simulation_time": 10,
   "node_count": 8,
 
   "packet_size": 10,
@@ -23,5 +23,5 @@
   "initial_delay": 0,
 
   "sample_rate": 20,
-  "beacon_interval": 200
+  "beacon_interval": 100
 }
