@@ -68,7 +68,7 @@ class BanSSCS:
     logger = SeoungSimLogger(logger_name="BAN-SSCS", level=logging.DEBUG)
 
     NUM_SLOTS = int(JSONConfig.get_config("time_slots"))
-    SLOT_DURATION = int(JSONConfig.get_config("slot_duration"))  # default is 1
+    SLOT_DURATION = 1
 
     def __init__(
             self,
@@ -76,7 +76,8 @@ class BanSSCS:
             mobility_helper: MobilityHelper | None = None,
             node_count: int | None = None,
             node_priority: tuple[float, ...] | None = None,
-            tracers: list[Tracer] | None = None
+            tracers: list[Tracer] | None = None,
+            q_learning_trainer: QLearningTrainer | None = None,
     ):
         self.env: simpy.Environment | None = None
         self.packet_list: list = list()
@@ -86,14 +87,18 @@ class BanSSCS:
         self.tx_power: float = 0   # dBm
 
         if coordinator:
-            self.q_learning_trainer = QLearningTrainer(
-                mobility_helper=mobility_helper,
-                sscs=self,
-                movement_phases=mobility_helper.phase_info,
-                node_count=node_count,
-                time_slots=BanSSCS.NUM_SLOTS,
-                tracers=tracers
-            )
+            if q_learning_trainer is not None:
+                self.q_learning_trainer = q_learning_trainer
+            
+            else:
+                self.q_learning_trainer = QLearningTrainer(
+                    mobility_helper=mobility_helper,
+                    sscs=self,
+                    movement_phases=mobility_helper.phase_info,
+                    node_count=node_count,
+                    time_slots=BanSSCS.NUM_SLOTS,
+                    tracers=tracers
+                )
 
             self.current_time_slot_index: int = 0
 

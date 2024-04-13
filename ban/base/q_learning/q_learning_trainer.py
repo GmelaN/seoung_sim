@@ -72,9 +72,6 @@ class QLearningTrainer:
         self.discount_factor: float = configs["discount_factor"] if discount_factor is None else discount_factor
         self.exploration_rate: float = configs["exploration_rate"] if exploration_rate is None else exploration_rate
 
-
-        print(self.node_count, self.time_slots, self.learning_rate, self.discount_factor, self.exploration_rate)
-
         '''DEFAULT PARAMETERS'''
         self.sscs = sscs
         self.mobility_helper: MobilityHelper = mobility_helper
@@ -185,8 +182,8 @@ class QLearningTrainer:
         if throughput == 0:
             return -1  * self.get_node_priority(action)
 
-        # reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
-        reward = 1 * self.get_node_priority(action)
+        reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
+        # reward = 1 * self.get_node_priority(action)
 
         return reward
 
@@ -265,6 +262,6 @@ class QLearningTrainer:
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
             msg="CURRENT ALLOCATION STAT: " + ", ".join(throughputs),
-            level=logging.CRITICAL,
+            level=logging.INFO,
             newline=" "
         )

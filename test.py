@@ -30,17 +30,6 @@ use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
 TIME_SLOTS = int(JSONConfig.get_config("time_slots"))
 
-# positions[PHASE_n][BODY_POSITION_k][TIME_SLOT_p] = (x, y, z)
-
-data, i_data = None, None
-with open("./position_0.029.json", 'r', encoding="utf8") as f:
-    data = json.load(f)
-
-with open("./reversed_position_0.029.json", 'r', encoding="utf8") as f:
-    i_data = json.load(f)
-
-positions = [data, i_data]
-
 
 '''mobility helper'''
 mobility_helper: MobilityHelper = MobilityHelper(env)
