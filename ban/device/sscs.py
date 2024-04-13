@@ -95,8 +95,6 @@ class BanSSCS:
                 tracers=tracers
             )
 
-            self.tx_powers = (-10, -5, -10, -5, 0, 0, 0, 0)
-
             self.current_time_slot_index: int = 0
 
         # self.logger = logging.getLogger("BAN-SSCS")
@@ -260,14 +258,14 @@ class BanSSCS:
                 assigned_link.allocation_id = node_id
                 assigned_link.interval_start = start_offset
                 assigned_link.interval_end = num_slot
-                assigned_link.tx_power = self.tx_powers[node_id]
+                assigned_link.tx_power = self.tx_power
                 assigned_link.time_slot_index = time_slot_index
 
                 tx_packet.get_frame_body().set_assigned_link_info(assigned_link)
 
             BanSSCS.logger.log(
                 sim_time=self.env.now,
-                msg=f"configuring time slots...{time_slot_index}, node id: {node_id}, tx_power: {self.tx_powers[node_id]}",
+                msg=f"configuring time slots...{time_slot_index}, node id: {node_id}, PHASE: {self.mobility_helper.current_phase.name}",
                 level=logging.INFO
             )
 
@@ -320,7 +318,7 @@ class BanSSCS:
             BanSSCS.logger.log(
                 sim_time=self.env.now,
                 msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
-                    + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
+                    + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}, phase: {mobility_phase}",
                 level=logging.DEBUG,
             )
 
@@ -342,7 +340,6 @@ class BanSSCS:
             msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
                 + f"requested_packet_count increased, now {self.mac.get_tracer().requested_packet_count}",
             level=logging.DEBUG,
-            newline=" "
         )
 
         event = self.env.event()

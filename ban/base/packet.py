@@ -16,7 +16,7 @@ class Packet:
 
         self.__success = False
         self.__spectrum_tx_params = SpectrumSignalParameters()
-        self.__mac_header = BanMacHeader()
+        self.mac_header = BanMacHeader()
 
         self.__mac_frame_body = None
 
@@ -26,8 +26,8 @@ class Packet:
     #     assert tx_params is not None
     #     assert tx_params.node_id is not None and tx_params.ban_id is not None and tx_params.recipient_id is not None
     #
-    #     self.__mac_header.set_tx_params(tx_params.ban_id, tx_params.node_id, tx_params.recipient_id)
-    #     self.__mac_header.set_frame_control(frame_type, frame_subtype, tx_params.tx_option, tx_params.seq_num)
+    #     self.mac_header.set_tx_params(tx_params.ban_id, tx_params.node_id, tx_params.recipient_id)
+    #     self.mac_header.set_frame_control(frame_type, frame_subtype, tx_params.tx_option, tx_params.seq_num)
     #
     #     if frame_subtype == BanFrameSubType.WBAN_MANAGEMENT_BEACON:
     #         self.__mac_frame_body = Beacon()
@@ -54,13 +54,13 @@ class Packet:
     #         print('frame initialization error (invalid frame subtype)')
 
     def set_mac_header_(self, mac_header: BanMacHeader):
-        self.__mac_header = mac_header
+        self.mac_header = mac_header
 
     def get_mac_header(self) -> BanMacHeader:
-        if self.__mac_header is None:
+        if self.mac_header is None:
             raise Exception("mac header is not set.")
 
-        return self.__mac_header
+        return self.mac_header
 
     def set_frame_body(self, frame_body):
         self.__mac_frame_body = frame_body

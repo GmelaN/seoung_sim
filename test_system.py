@@ -1,4 +1,5 @@
 from collections import namedtuple
+import json
 
 import simpy
 from simpy.events import NORMAL
@@ -21,22 +22,32 @@ env = simpy.Environment()  # Create the SimPy environment
 
 '''SET SIMULATION PARAMETERS'''
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
-NODE_COUNT = 1
+NODE_COUNT = 1  # count for non-coordinator node(s), MAX: 8
 
 WEIGHT = int(JSONConfig.get_config("priority_weight"))
 
-INITIAL_DELAY = int(JSONConfig.get_config("initial_delay"))
-
 use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
-# channel
-channel = Channel()      # All nodes share a channel environment
+TIME_SLOTS = int(JSONConfig.get_config("time_slots"))
+
+# positions[PHASE_n][BODY_POSITION_k][TIME_SLOT_p] = (x, y, z)
+
+data, i_data = None, None
+with open("./position_0.029.json", 'r', encoding="utf8") as f:
+    data = json.load(f)
+
+with open("./reversed_position_0.029.json", 'r', encoding="utf8") as f:
+    i_data = json.load(f)
+
+positions = [data, i_data]
+
+
+'''mobility helper'''
+mobility_helper: MobilityHelper = MobilityHelper(env)
+
+'''channel'''
+channel = Channel(mobility_helper)      # All nodes share a channel environment
 channel.set_env(env)
-prop_loss_model = PropLossModel()
-prop_loss_model.set_frequency(0.915e9)  # We assume the wireless channel operates in 915 Mhz
-prop_delay_model = PropDelayModel()
-channel.set_loss_model(prop_loss_model)
-channel.set_delay_model(prop_delay_model)
 
 COORDINATOR_ID = 99
 
@@ -61,9 +72,7 @@ nodes: list[Node] = [
     for i in range(NODE_COUNT)
 ]
 
-# Mobility
-mobility_helper: MobilityHelper = MobilityHelper(env)
-
+'''Mobility'''
 tracers: list[Tracer] = [node.get_mac().get_tracer() for node in nodes]
 
 # Create agent containers
@@ -112,21 +121,21 @@ def send_data(env):
 '''do_walking event'''
 event = env.event()
 event._ok = True
-event.callbacks.append(mobility_helper.do_walking)
-env.schedule(event, priority=NORMAL, delay=0)
+event.callbacks.append(mobility_helper.change_cycle)
+env.schedule(event, priority=NORMAL, delay=0.5 - 0.000001)
 
 '''send_beacon event'''
 event = env.event()
 event._ok = True
 event.callbacks.append(lambda _: agent.m_sscs.send_beacon(event=env))
-env.schedule(event, priority=NORMAL, delay=0 + INITIAL_DELAY)
+env.schedule(event, priority=NORMAL, delay=0)
 
 '''send_data event'''
-delay = 0.001
+delay = 0.0001
 event = env.event()
 event._ok = True
 event.callbacks.append(send_data)
-env.schedule(event, priority=NORMAL, delay=delay + INITIAL_DELAY)
+env.schedule(event, priority=NORMAL, delay=delay)
 
 
 '''show result event'''
@@ -135,13 +144,34 @@ def show_result(env):
     for i in range(NODE_COUNT):
         result[i] = nodes[i].m_mac.show_result(total=True)
 
+    config: str = ""
+    with open("./config.json", 'r', encoding="UTF8") as f:
+        for i in f.readlines():
+            config += i
+
+    string = "q_learning" if use_q_learning else "vanilla"
+
+    with open(f"result_{string}.txt", 'w', encoding="UTF8") as f:
+        for k in result[0].keys():
+            f.write(f"{str(k):>20}")
+
+        f.write('\n')
+
+        for i in result:
+            for j in i.keys():
+                f.write(f"{i[j]:>20.3f}")
+
+            f.write('\n')
+
+        f.write(config)
+
 
 event = env.event()
 event._ok = True
 event.callbacks.append(show_result)
 event.callbacks.append(agent.m_sscs.print_q_table)
-env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001 + INITIAL_DELAY)
+env.schedule(event, priority=NORMAL, delay=simulation_time - 0.00001)
 
 
 '''RUN SIMULATION'''
-env.run(until=simulation_time + INITIAL_DELAY)
+env.run(until=simulation_time)

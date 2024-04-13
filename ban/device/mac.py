@@ -66,6 +66,7 @@ class BanMac:
         self.initial_energy = 1
 
         self.time_slot_index = None
+        self.packet_sent = False
 
 
     def set_env(self, env: simpy.Environment):
@@ -177,6 +178,7 @@ class BanMac:
 
 
     def mlme_data_request(self, tx_packet: Packet):
+        self.packet_sent = False
         # Push the packet into the Tx queue
         self.tx_queue.put_nowait(tx_packet)
 
@@ -185,17 +187,17 @@ class BanMac:
         event.callbacks.append(self.check_queue)
         self.env.schedule(event, priority=0, delay=0)
 
-        recipient_id = tx_packet.get_mac_header().recipient_id
-        broadcast = "BROADCAST"
+        # recipient_id = tx_packet.get_mac_header().recipient_id
+        # broadcast = "BROADCAST"
 
-        BanMac.logger.log(
-            sim_time=self.get_env().now,
-            msg=
-            f"{self.__class__.__name__}[{self.mac_params.node_id}] mlme_data_request: processing MLME-DATA.request, "
-            + f"packet size: {tx_packet.get_size()}, "
-            + f"from : {tx_packet.get_mac_header().sender_id}, "
-            + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
-        )
+        # BanMac.logger.log(
+        #     sim_time=self.get_env().now,
+        #     msg=
+        #     f"{self.__class__.__name__}[{self.mac_params.node_id}] mlme_data_request: processing MLME-DATA.request, "
+        #     + f"packet size: {tx_packet.get_size()}, "
+        #     + f"from : {tx_packet.get_mac_header().sender_id}, "
+        #     + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}."
+        # )
 
 
     def mcps_data_request(self, tx_params: BanTxParams, tx_packet: Packet):
@@ -231,8 +233,7 @@ class BanMac:
             + f"time slot: {tx_packet.get_mac_header().time_slot_index}, "
             + f"from : {self.mac_params.node_id}, "
             + f"to: {broadcast if recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value else recipient_id}.",
-            level=logging.INFO,
-            newline=" "
+            level=logging.DEBUG
         )
 
         # Push the packet into the Tx queue
@@ -242,6 +243,8 @@ class BanMac:
 
     # Callback function (called from PHY)
     def pd_data_confirm(self, trx_state: BanPhyTRxState):
+        self.packet_sent = True # 한 슬롯당 한번만 데이터를 전송
+
         if trx_state == BanPhyTRxState.IEEE_802_15_6_PHY_SUCCESS:
             # 전송하기로 했던 패킷이 정상적으로 전송된 경우
             # 전송한 패킷의 헤더를 까서, ACK을 받아야 하는 전송인지 확인하고, ACK를 받기 위해 수신 대기 모드로 들어감
@@ -382,7 +385,7 @@ class BanMac:
             # 1. 비콘 신호인 경우
             if (rx_frame_type == BanFrameType.IEEE_802_15_6_MAC_MANAGEMENT
                     and rx_recipient_id == BanRecipientType.IEEE_802_15_6_BROADCAST.value):
-
+                self.packet_sent = False # 새 비콘 신호 수신 -> 패킷 전송 여부 플래그 초기화
                 # 수신한 비콘 신호의 남은 할당 시간 계산
                 self.beacon_rx_time = self.get_env().now
                 assigned_link: AssignedLinkElement = rx_packet.get_frame_body().get_assigned_link_info(self.mac_params.node_id)
@@ -426,14 +429,16 @@ class BanMac:
                         sim_time=self.get_env().now,
                         msg=f"{self.__class__.__name__}[{self.mac_params.node_id}] "
                             f"time slot: {self.time_slot_index} "
-                            f"alloc start: {self.alloc_start_time:.6f}, "
-                            f"alloc end: {self.alloc_end_time:.6f}",
-                        level=logging.DEBUG
+                            f"alloc start: {self.alloc_start_time + + self.env.now:.6f}, "
+                            f"alloc end: {self.alloc_end_time + + self.env.now:.6f}"
+                            f"!!! {self.alloc_start_time}",
+                        level=logging.INFO
                     )
 
                     event = self.env.event()
                     event._ok = True
-                    event.callbacks.append(self.start_tx)
+                    event.callbacks.append(self.check_queue)
+
                     self.env.schedule(event, priority=0, delay=self.alloc_start_time)
                 else:
                     BanMac.logger.log(
@@ -586,7 +591,7 @@ class BanMac:
 
                     BanMac.logger.log(
                         sim_time=self.get_env().now,
-                        msg=f"{self.__class__.__name__}[{self.mac_params.node_id}] no remaining time left, TX failed.",
+                        msg=f"{self.__class__.__name__}[{self.mac_params.node_id}] (remain_alloc: {remain_alloc_time}, {expected_tx_time + guard_time + ack_rx_time}, {microseconds(slot_duration)}) no remaining time left, TX failed.",
                         level=logging.WARN
                     )
 
@@ -599,6 +604,7 @@ class BanMac:
                         self.get_phy().set_trx_state_request(BanPhyTRxState.IEEE_802_15_6_PHY_TRX_OFF)
 
                     return
+                # pass
 
             BanMac.logger.log(
                 sim_time=self.get_env().now,
@@ -650,12 +656,21 @@ class BanMac:
 
 
     def check_queue(self, event: simpy.Environment):
-        # BanMac.logger.log(sim_time=self.get_env().now, msg=(
-        #     f"{self.__class__.__name__}[{self.mac_params.node_id}] check_queue: "
-        #     + f"checking queue for pending TX requests..."
-        # )
+        if self.packet_sent: # 한 슬롯당 한번만 전송
+            return
+
+        BanMac.logger.log(
+            sim_time=self.get_env().now,
+            msg=(
+                f"{self.__class__.__name__}[{self.mac_params.node_id}] check_queue: "
+                + f"checking queue for pending TX requests..."
+            ),
+            level=logging.DEBUG
+        )
         if self.mac_state == BanMacState.MAC_IDLE and self.tx_queue.empty() is False and self.tx_packet is None:
-            self.tx_packet = self.tx_queue.get_nowait()
+            self.tx_packet: Packet = self.tx_queue.get_nowait()
+            # mac_header: BanMacHeader = self.tx_packet.get_mac_header()
+            self.tx_packet.mac_header.time_slot_index = self.time_slot_index
             self.change_mac_state(BanMacState.MAC_SENDING)
             self.get_phy().set_trx_state_request(BanPhyTRxState.IEEE_802_15_6_PHY_TX_ON)
 

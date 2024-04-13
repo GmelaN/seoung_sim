@@ -36,9 +36,9 @@ class QLearningTrainer:
             mobility_helper: MobilityHelper,
             tracers: list[Tracer],
 
-            learning_rate: float = 0.2,
-            discount_factor: float = 0.9,
-            exploration_rate: float = 0.5,
+            learning_rate: float = None,
+            discount_factor: float = None,
+            exploration_rate: float = None,
     ):
         '''
 
@@ -71,6 +71,9 @@ class QLearningTrainer:
         self.learning_rate: float = configs["learning_rate"] if learning_rate is None else learning_rate
         self.discount_factor: float = configs["discount_factor"] if discount_factor is None else discount_factor
         self.exploration_rate: float = configs["exploration_rate"] if exploration_rate is None else exploration_rate
+
+
+        print(self.node_count, self.time_slots, self.learning_rate, self.discount_factor, self.exploration_rate)
 
         '''DEFAULT PARAMETERS'''
         self.sscs = sscs
@@ -180,9 +183,10 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1 * self.get_node_priority(action)
+            return -1  * self.get_node_priority(action)
 
-        reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
+        # reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
+        reward = 1 * self.get_node_priority(action)
 
         return reward
 
@@ -209,8 +213,9 @@ class QLearningTrainer:
 
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
         if self.off:
-            return random.sample([i for i in range(self.node_count)], self.time_slots)
-            # return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
+            self.reset_throughput()
+            # return random.sample([i for i in range(self.node_count)], self.time_slots)
+            return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
 
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
@@ -255,10 +260,11 @@ class QLearningTrainer:
         return
 
     def print_throughput(self):
-        throughputs = tuple(f"node {i+1}: {len(self.tracers[i].success_tx_packet)} / {len(self.tracers[i].tx_packet)}" for i in range(len(self.tracers)))
+        throughputs = tuple(f"{len(self.tracers[i].success_tx_packet)}/{len(self.tracers[i].tx_packet)} " for i in range(len(self.tracers)))
 
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg="CURRENT ALLOCATION STAT:\n" + ", ".join(throughputs),
-            level=logging.INFO
+            msg="CURRENT ALLOCATION STAT: " + ", ".join(throughputs),
+            level=logging.CRITICAL,
+            newline=" "
         )
