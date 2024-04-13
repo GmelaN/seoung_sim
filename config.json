@@ -12,7 +12,7 @@
 
   "log_level": "CRITICAL",
 
-  "movement_noise": 0.005,
+  "movement_noise": 0.029,
 
   "additional_tx_loss": 15,
 
