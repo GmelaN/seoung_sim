@@ -796,7 +796,7 @@ class BanMac:
         if total is False:
             result["request"] = self.get_tracer().get_requested_packet_count()
             result["enqueued"] = self.get_tracer().get_enqueued_packet_count()
-            result["success"] = self.get_tracer().get_transaction_count()
+            result["success"] = self.get_tracer().get_success_packet_count()
             result["throughput"] = round(self.get_tracer().get_throughput() / 1000, 3)
             result["energy_cosumption_r"] = round(self.get_tracer().get_energy_consumption_ratio(), 3)
 
@@ -813,7 +813,7 @@ class BanMac:
         else:
             result["request"] = self.get_tracer().get_requested_packet_count()
             result["enqueued"] = self.get_tracer().get_enqueued_packet_count()
-            result["success"] = self.get_tracer().get_transaction_count()
+            result["success"] = self.get_tracer().get_success_packet_count()
             result["throughput"] = round(self.get_tracer().get_throughput(total=True) / 1000, 3)
             result["energy_cosumption_r"] = round(self.get_tracer().get_energy_consumption_ratio(), 3)
 
