@@ -821,7 +821,7 @@ class BanMac:
             #     f"NODE: {self.get_mac_params().node_id}\t"
             #     f"REQUESTED: {self.get_tracer().get_requested_packet_count():5d}\t"
             #     f"ENQUEUED: {self.get_tracer().get_enqueued_packet_count():5d}\t"
-            #     f"SUCCESS: {self.get_tracer().get_success_packet_count():5d}\t"
+            #     f"SUCCESS: {self.get_tracer().get_succesget_success_packet_counts_packet_count():5d}\t"
             #     f'Packet DELIVERY RATIO: {round(self.get_tracer().get_pkt_delivery_ratio(total=True), 2) * 100:.3f}%\t'
             #     f"THROUGHPUT: {round(self.get_tracer().get_throughput(total=True) / 1000, 3):.3f} kbps\t"
             #     f"TRANSACTIONS: {self.get_tracer().get_transaction_count():5d}\t"
@@ -830,7 +830,11 @@ class BanMac:
 
             output = (
                 f"NODE: {self.get_mac_params().node_id}\t"
-                f"REQ / ENQUE / OK\t{self.get_tracer().get_requested_packet_count():5d} / {self.get_tracer().get_enqueued_packet_count():5d} / {self.get_tracer().get_success_packet_count():5d}"
+                f"REQ / ENQUE / OK / SUCCESS/ENQUE(%) \t"
+                f"{self.get_tracer().get_requested_packet_count():5d} / "
+                f"{self.get_tracer().get_enqueued_packet_count():5d} / "
+                f"{self.get_tracer().get_success_packet_count():5d} / "
+                f"{self.get_tracer().get_success_packet_count() / self.get_tracer().get_enqueued_packet_count() * 100 :5.3f}%"
             )
 
         BanMac.logger.log(
