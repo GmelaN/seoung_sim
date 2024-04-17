@@ -1,12 +1,19 @@
 from enum import Enum
 
-from ban.base.positioning import Vector
+# from ban.base.positioning import Vector
 
+# import json
 
-class MobilityState(Enum):
-    STANDING = 0
-    WALKING = 1
-    SITTING = 2
+# positions[PHASE_n][BODY_POSITION_k][TIME_SLOT_p] = (x, y, z)
+
+# data, i_data = None, None
+# with open("./position_0.029.json", 'r', encoding="utf8") as f:
+#     data = json.load(f)
+
+# with open("./reversed_position_0.029.json", 'r', encoding="utf8") as f:
+#     i_data = json.load(f)
+
+# positions = [data, i_data]
 
 
 class BodyPosition(Enum):
@@ -30,32 +37,7 @@ class BodyPosition(Enum):
 
 class MobilityModel:
     def __init__(self, body_position: BodyPosition):
-        self.position = Vector(0, 0, 0)
-        self.mobility_state: MobilityState | None = None
         self.body_position: BodyPosition = body_position
-
-    def set_position(self, position: Vector):
-        self.position = position
-
-    def get_position(self):
-        return self.position
 
     def get_body_position(self):
         return self.body_position
-
-    def get_distance_from(self, position):
-        v = Vector(0, 0, 0)
-        v.x = position.x - self.position.x
-        v.y = position.y - self.position.y
-        v.z = position.z - self.position.z
-
-        return v.get_length()
-
-    def is_los(self, position):
-        if self.position.z < 1 <= position.z:
-            return False
-        elif self.position.z >= 1 > position.z:
-            return False
-        else:
-            # the two nodes are on the line of sight
-            return True
