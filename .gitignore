@@ -29,3 +29,6 @@ result_vanilla.txt
 __pycache__/test.cpython-311.pyc
 ban/base/helper/mobility_disturber.py
 .vscode/launch.json
+a.txt
+position_0.029.json
+reversed_position_0.029.json
