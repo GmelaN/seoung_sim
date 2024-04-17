@@ -74,11 +74,11 @@ nodeBuilder.set_sscs(get_ban_sscs(mobility_helper, tracers))
 agent: Node = nodeBuilder.build()
 
 mob_agent = MobilityModel(BodyPosition.BODY)
-mobility_helper.add_mobility_list(mob_agent)
+mobility_helper.add_mobility_list(99, mob_agent)
 agent.get_phy().set_mobility(mob_agent)
 
 # Mobility positions
-mobility_positions = tuple(BodyPosition)[7:]
+mobility_positions = tuple(BodyPosition)[7:-1]
 
 for i, position in enumerate(mobility_positions):
     if i >= NODE_COUNT:
@@ -86,7 +86,7 @@ for i, position in enumerate(mobility_positions):
 
     mobility = MobilityModel(position)
     nodes[i].get_phy().set_mobility(mobility)
-    mobility_helper.add_mobility_list(mobility)
+    mobility_helper.add_mobility_list(i, mobility)
 
     # Set mac parameters
     nodes[i].get_mac().set_mac_params(BanTxParams(0, i, COORDINATOR_ID))
