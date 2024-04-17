@@ -337,7 +337,7 @@ class BanSSCS:
         event.callbacks.append(
             lambda _: self.send_data(tx_packet=tx_packet)
         )
-        self.env.schedule(event, priority=NORMAL, delay=0.2)
+        self.env.schedule(event, priority=NORMAL, delay=0.1)
 
 
     def get_data(self):

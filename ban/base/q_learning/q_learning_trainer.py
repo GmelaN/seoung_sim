@@ -110,17 +110,21 @@ class QLearningTrainer:
         :param current_state: State, 현재 상태
         :return action
         '''
+
+        strategy: str = "explore"
+
         # explore
         if not self.first and np.random.rand() < self.exploration_rate:
             action = self.action_space[np.random.randint(len(self.action_space))]
 
         # exploit
         else:
+            strategy = "exploit"
             action = self.action_space[np.argmax(self.q_table[current_state])]
 
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"action is: {action}",
+            msg=f"action is: {action}, strategy: {strategy}",
             level=logging.DEBUG
         )
 
@@ -136,8 +140,9 @@ class QLearningTrainer:
         :return next_state: next state
         '''
 
+        # 마지막 타임 슬롯의 다음 슬롯을 구하는 경우
         if current_state.slot + 1 == self.time_slots:
-            return State(phase=current_state.phase, slot=-1)
+            return State(phase=current_state.phase, slot=-1) # 종결 상태 반환
 
         return State(phase=current_state.phase, slot=current_state.slot + 1)
 
@@ -146,19 +151,21 @@ class QLearningTrainer:
         if self.off:
             return
 
-        QLearningTrainer.logger.log(
-            sim_time=self.sscs.env.now,
-            msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}",
-            level=logging.INFO
-        )
-
         # 다음 행동 중 가장 가치가 큰 행동 선택
-
         # 최종 행동(마지막 타임 슬롯)인 경우
         if next_state.slot == -1:
             td_target = reward
         else:
+            # 다음 상태 중 최고의 Q값을 가지는 행동 선택
             best_next_action = np.argmax(self.q_table[next_state])
+            assert best_next_action in self.action_space
+
+            QLearningTrainer.logger.log(
+                sim_time=self.sscs.env.now,
+                msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}, best next action: {best_next_action}",
+                level=logging.CRITICAL
+            )
+
             td_target = reward + self.discount_factor * self.q_table[next_state][best_next_action]
 
         td_delta = td_target - self.q_table[current_state][action]
@@ -182,7 +189,7 @@ class QLearningTrainer:
         if throughput == 0:
             return -1  * self.get_node_priority(action)
 
-        reward = 0.001 * self.get_throughput(action) * self.get_node_priority(action)
+        reward = 0.01 * self.get_throughput(action) * self.get_node_priority(action)
         # reward = 1 * self.get_node_priority(action)
 
         return reward
@@ -202,6 +209,9 @@ class QLearningTrainer:
 
         # action = self.choose_action(current_state)                # node index(will allocate to current slot)
         action = allocated_node_id                                  # node's id that allocated at that time slot
+
+        assert action in self.action_space
+
         next_state = self.get_next_state(current_state, action)     # State(phase, slot + 1)
         reward = self.calculate_reward(action)                      # reward for taking that action
 
@@ -229,7 +239,6 @@ class QLearningTrainer:
         self.reset_throughput()
         self.first = False
 
-
         return time_slots
 
 
@@ -241,9 +250,7 @@ class QLearningTrainer:
         if node_id == -1:
             return 0
         # print(self.tracers[node_id].get_throughput())
-        # TODO: 정확한 스루풋 반환
         return self.tracers[node_id].get_throughput()
-        # return self.sscs.get_throughput()
 
 
     def get_node_priority(self, node_id: int) -> int:
@@ -259,9 +266,17 @@ class QLearningTrainer:
     def print_throughput(self):
         throughputs = tuple(f"{len(self.tracers[i].success_tx_packet)}/{len(self.tracers[i].tx_packet)} " for i in range(len(self.tracers)))
 
+        total_requested_packets = 0
+        total_success_packets = 0
+
+        for tracer in self.tracers:
+            total_requested_packets += len(tracer.tx_packet)
+            total_success_packets += len(tracer.success_tx_packet)
+
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg="CURRENT ALLOCATION STAT: " + ", ".join(throughputs),
-            level=logging.INFO,
+            msg="CURRENT ALLOCATION STAT: " + ", ".join(throughputs)
+                + f", total: {total_success_packets} / {total_requested_packets}",
+            level=logging.CRITICAL,
             newline=" "
         )
