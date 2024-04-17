@@ -45,15 +45,19 @@ class Channel:
                 # if the sender is the receiver, skip the transmission
                 continue
 
-            if self.tx_packet.get_mac_header().sender_id != 99:
+            sender_id = self.tx_packet.get_mac_header().sender_id
+
+            if sender_id != 99:
                 time_slot = self.tx_packet.get_mac_header().time_slot_index
 
                 assert time_slot is not None
 
-                if not self.mob_helper.can_transaction(self.tx_packet.get_mac_header().sender_id, time_slot):
+                if not self.mob_helper.can_transaction(sender_id, time_slot):
                     Channel.logger.log(
                         sim_time=self.env.now,
-                        msg=f"{self.mob_helper.current_phase.name} not allows transaction, dropping packet from: {self.tx_packet.get_mac_header().sender_id} to: {self.tx_packet.get_mac_header().recipient_id}",
+                        msg=f"{self.mob_helper.current_phase.name} not allows transaction, dropping packet from: {sender_id} to: {self.tx_packet.get_mac_header().recipient_id}, "
+                            + f"sender's position: {self.mob_helper.mobility_list[sender_id].get_body_position().name}, "
+                            + f"current time slot info: {time_slot}, ",
                         level=logging.INFO
                     )
                     continue
