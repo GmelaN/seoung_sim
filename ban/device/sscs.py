@@ -254,7 +254,7 @@ class BanSSCS:
             sim_time=self.env.now,
             msg=
             f"{self.__class__.__name__}[{self.tx_params.node_id}] time slot configuration is: {slots}",
-            level=logging.INFO
+            level=logging.CRITICAL
         )
 
         for time_slot_index, node_id in enumerate(slots):
@@ -271,7 +271,7 @@ class BanSSCS:
             BanSSCS.logger.log(
                 sim_time=self.env.now,
                 msg=f"configuring time slots...{time_slot_index}, node id: {node_id}, PHASE: {self.mobility_helper.current_phase.name}",
-                level=logging.INFO
+                level=logging.DEBUG
             )
 
             self.time_slots.append(
@@ -295,21 +295,6 @@ class BanSSCS:
         event.callbacks.append(self.beacon_interval_timeout)  # this method must be called before the send_beacon()
         event.callbacks.append(self.send_beacon)
         self.env.schedule(event, priority=NORMAL, delay=self.beacon_interval)
-
-
-    # def update_q_table(self): #, time_slot_index: int, node_id: int):
-    #     while self.time_slots:
-    #         time_slot_index, node_id = self.time_slots.pop(0)
-    #
-    #         BanSSCS.logger.log(
-    #             sim_time=self.env.now,
-    #             msg=f"{self.__class__.__name__}[{self.mac.get_mac_params().node_id}] "
-    #                 + f"updating Q-table, time slot:{time_slot_index}, node ID: {node_id}",
-    #             level=logging.DEBUG,
-    #             newline=" "
-    #         )
-    #
-    #         self.q_learning_trainer.train(time_slot_index=time_slot_index, allocated_node_id=node_id)
 
 
     def beacon_interval_timeout(self, event):
@@ -401,7 +386,7 @@ class BanSSCS:
             for i in q_table[key]:
                 values_string += (f"{i:.3f}" + '\t\t')
 
-            string += f"{key.phase.name}\t\t\tSLOT_{key.slot}\t\t\t\t{values_string}\n"
+            string += f"{key.phase.name}\t\tSLOT_{key.slot}\t\t\t{values_string}\n"
 
         BanSSCS.logger.log(
             sim_time=self.env.now,
