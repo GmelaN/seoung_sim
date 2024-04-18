@@ -35,28 +35,32 @@ class MobilityHelper:
         MovementPhase.PHASE_0: {
             BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
 
-            BodyPosition.LEFT_ELBOW: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_WRIST: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_ANKLE: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_KNEE: (True, True, True, True, True, True, True, False),
+            # T T T T T F F F
+            BodyPosition.LEFT_ELBOW: (True, True, True, True, True, False, False, False),
+            BodyPosition.LEFT_WRIST: (True, True, True, True, True, False, False, False),
+            BodyPosition.RIGHT_ANKLE: (True, True, True, True, True, False, False, False),
+            BodyPosition.RIGHT_KNEE: (True, True, True, True, True, False, False, False),
 
-            BodyPosition.RIGHT_ELBOW: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_WRIST: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_ANKLE: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_KNEE: (False, False, False, False, False, False, False, True),
+            # F F F T T T T T
+            BodyPosition.RIGHT_ELBOW: (False, False, False, True, True, True, True, True),
+            BodyPosition.RIGHT_WRIST: (False, False, False, True, True, True, True, True),
+            BodyPosition.LEFT_ANKLE: (False, False, False, True, True, True, True, True),
+            BodyPosition.LEFT_KNEE: (False, False, False, True, True, True, True, True),
         },
         MovementPhase.PHASE_1: {
             BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
             
-            BodyPosition.LEFT_ELBOW: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_WRIST: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_ANKLE: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_KNEE: (False, False, False, False, False, False, False, True),
+            # F F F T T T T T
+            BodyPosition.LEFT_ELBOW: (False, False, False, True, True, True, True, True),
+            BodyPosition.LEFT_WRIST: (False, False, False, True, True, True, True, True),
+            BodyPosition.RIGHT_ANKLE: (False, False, False, True, True, True, True, True),
+            BodyPosition.RIGHT_KNEE: (False, False, False, True, True, True, True, True),
 
-            BodyPosition.RIGHT_ELBOW: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_WRIST: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_ANKLE: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_KNEE: (True, True, True, True, True, True, True, False),
+            # T T T T T F F F
+            BodyPosition.RIGHT_ELBOW: (True, True, True, True, True, False, False, False),
+            BodyPosition.RIGHT_WRIST: (True, True, True, True, True, False, False, False),
+            BodyPosition.LEFT_ANKLE: (True, True, True, True, True, False, False, False),
+            BodyPosition.LEFT_KNEE: (True, True, True, True, True, False, False, False),
         }
     }
 
