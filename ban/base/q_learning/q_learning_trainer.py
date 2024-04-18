@@ -100,6 +100,8 @@ class QLearningTrainer:
         self.off = False
         self.first = True
 
+        self.total_allocated_count: list = [0 for _ in range(self.node_count)]
+
 
     def turn_off(self):
         self.off = True
@@ -221,6 +223,10 @@ class QLearningTrainer:
     def get_time_slots(self, phase: MovementPhase) -> list[int]:
         if self.off:
             self.reset_throughput()
+
+            for i in range(self.node_count):
+                self.total_allocated_count[i] += 1
+
             # return random.sample([i for i in range(self.node_count)], self.time_slots)
             return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
 
@@ -235,11 +241,18 @@ class QLearningTrainer:
             time_slots[i] = node
             state = State(phase=state.phase, slot=state.slot + 1)
 
+            self.total_allocated_count[node] += 1
+
         # TODO: 스루풋 초기화 시점
         self.reset_throughput()
         self.first = False
 
         return time_slots
+    
+
+    def get_total_allocated_info(self):
+        return str(self.total_allocated_count)[1:-1].replace(",", "")
+
 
 
     def detect_movement_phase(self) -> MovementPhase:

@@ -1,22 +1,25 @@
 {
-  "learning_rate": 0.5,
+  "learning_rate": 0.2,
   "discount_factor": 0.9,
-  "exploration_rate": 0.7,
+  "exploration_rate": 0.2,
   "time_slots": 8,
   "slot_duration": 1,
 
-  "simulation_time": 1000,
+  "simulation_time": 100,
   "node_count": 8,
 
-  "log_level": "critical",
+  "log_level": "CRITICAL",
 
-  "use_q_learning": true,
+  "use_q_learning": false,
 
-  "priority_weight": 2,
+  "priority_weight": 0.1,
+
+
+
+
 
   "use_unallocated": false,
   "beacon_interval": 100,
-
   "initial_delay": 0,
   "packet_size": 10,
   "movement_noise": 0.029,

@@ -1,5 +1,6 @@
 from collections import namedtuple
 import json
+import logging
 
 import simpy
 from simpy.events import NORMAL
@@ -10,6 +11,7 @@ from ban.base.channel.prop_loss_model import PropLossModel
 from ban.base.helper.mobility_helper import MobilityHelper
 from ban.base.mobility import MobilityModel, BodyPosition
 from ban.base.packet import Packet
+from ban.base.q_learning.q_learning_trainer import QLearningTrainer
 from ban.base.tracer import Tracer
 from ban.config.JSONConfig import JSONConfig
 from ban.device.mac_header import BanMacHeader
@@ -129,7 +131,7 @@ env.schedule(event, priority=NORMAL, delay=delay)
 
 '''show result event'''
 result: list[dict] = [dict() for _ in range(NODE_COUNT)]
-def show_result(env):
+def show_result(enva):
     for i in range(NODE_COUNT):
         result[i] = nodes[i].m_mac.show_result(total=True)
 
@@ -153,6 +155,12 @@ def show_result(env):
             f.write('\n')
 
         f.write(config)
+
+    QLearningTrainer.logger.log(
+        sim_time=env.now,
+        msg=f"TIME SLOT ALLOCATED COUNT(node 0, node 1, ...): {agent.m_sscs.q_learning_trainer.get_total_allocated_info()}",
+        level=logging.CRITICAL
+    )
 
 
 event = env.event()

@@ -32,31 +32,38 @@ class MobilityHelper:
     logger = SeoungSimLogger(logger_name="MOBILITY", level=logging.DEBUG)
 
     transaction_ablility = {
+        # MovementPhase.PHASE_0: {
+        #     BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
+
+        #     BodyPosition.LEFT_ELBOW: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.LEFT_WRIST: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.RIGHT_ANKLE: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.RIGHT_KNEE: (True, True, True, True, True, True, True, False),
+
+        #     BodyPosition.RIGHT_ELBOW: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.RIGHT_WRIST: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.LEFT_ANKLE: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.LEFT_KNEE: (False, False, False, False, False, False, False, True),
+        # },
+        # MovementPhase.PHASE_1: {
+        #     BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
+            
+        #     BodyPosition.LEFT_ELBOW: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.LEFT_WRIST: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.RIGHT_ANKLE: (False, False, False, False, False, False, False, True),
+        #     BodyPosition.RIGHT_KNEE: (False, False, False, False, False, False, False, True),
+
+        #     BodyPosition.RIGHT_ELBOW: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.RIGHT_WRIST: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.LEFT_ANKLE: (True, True, True, True, True, True, True, False),
+        #     BodyPosition.LEFT_KNEE: (True, True, True, True, True, True, True, False),
+        # }
+
         MovementPhase.PHASE_0: {
-            BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
-
-            BodyPosition.LEFT_ELBOW: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_WRIST: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_ANKLE: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_KNEE: (True, True, True, True, True, True, True, False),
-
-            BodyPosition.RIGHT_ELBOW: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_WRIST: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_ANKLE: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_KNEE: (False, False, False, False, False, False, False, True),
+            i: (True, True, True, True, True, True, True, False) for i in tuple(BodyPosition)
         },
         MovementPhase.PHASE_1: {
-            BodyPosition.BODY: (True, True, True, True, True, True, True, True), # coordinator
-            
-            BodyPosition.LEFT_ELBOW: (False, False, False, False, False, False, False, True),
-            BodyPosition.LEFT_WRIST: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_ANKLE: (False, False, False, False, False, False, False, True),
-            BodyPosition.RIGHT_KNEE: (False, False, False, False, False, False, False, True),
-
-            BodyPosition.RIGHT_ELBOW: (True, True, True, True, True, True, True, False),
-            BodyPosition.RIGHT_WRIST: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_ANKLE: (True, True, True, True, True, True, True, False),
-            BodyPosition.LEFT_KNEE: (True, True, True, True, True, True, True, False),
+            i: (True, True, True, True, True, True, True, True) for i in tuple(BodyPosition)
         }
     }
 

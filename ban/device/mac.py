@@ -834,7 +834,7 @@ class BanMac:
                 f"{self.get_tracer().get_requested_packet_count():5d} / "
                 f"{self.get_tracer().get_enqueued_packet_count():5d} / "
                 f"{self.get_tracer().get_success_packet_count():5d} / "
-                f"{self.get_tracer().get_success_packet_count() / self.get_tracer().get_enqueued_packet_count() * 100 :5.3f}%"
+                f"{self.get_tracer().get_success_packet_count() / self.get_tracer().get_enqueued_packet_count() * 100 :7.3f}%"
             )
 
         BanMac.logger.log(
