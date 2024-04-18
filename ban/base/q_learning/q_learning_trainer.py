@@ -2,7 +2,7 @@ import enum
 import logging
 import random
 from collections import namedtuple, defaultdict
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 
@@ -100,9 +100,17 @@ class QLearningTrainer:
         self.off = False
         self.first = True
 
+        self.action_queue: List[int] = []
+        self.strategy: str = "explore"
 
     def turn_off(self):
         self.off = True
+
+
+    def initialize_action_queue(self):
+        action_queue = list(self.action_space)
+        np.random.shuffle(action_queue)
+        self.action_queue = action_queue.copy()
 
 
     def choose_action(self, current_state: State) -> int:
@@ -110,22 +118,23 @@ class QLearningTrainer:
         :param current_state: State, 현재 상태
         :return action
         '''
-
-        strategy: str = "explore"
-
         # explore
-        if not self.first and np.random.rand() < self.exploration_rate:
-            action = self.action_space[np.random.randint(len(self.action_space))]
+        # if not self.first and np.random.rand() < self.exploration_rate:
+        # if self.sscs.env.now <= 4.01:
+        # if np.random.rand() < self.exploration_rate:
+        if self.strategy == "explore":
+            # action = self.action_space[np.random.randint(len(self.action_space))]
+            assert len(self.action_queue) != 0
+            action = self.action_queue.pop()
 
         # exploit
         else:
-            strategy = "exploit"
             action = self.action_space[np.argmax(self.q_table[current_state])]
 
         QLearningTrainer.logger.log(
             sim_time=self.sscs.env.now,
-            msg=f"action is: {action}, strategy: {strategy}",
-            level=logging.DEBUG
+            msg=f"action is: {action}, strategy: {self.strategy}, exploration_rate: {self.exploration_rate}",
+            level=logging.INFO
         )
 
         assert action in self.action_space
@@ -162,13 +171,13 @@ class QLearningTrainer:
 
             QLearningTrainer.logger.log(
                 sim_time=self.sscs.env.now,
-                msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward}, best next action: {best_next_action}",
-                level=logging.CRITICAL
+                msg=f"COORDINATOR: updating Q-table, state: {current_state.slot}, action: {action}, reward: {reward},", # best next action: {best_next_action}",
+                level=logging.INFO
             )
 
-            td_target = reward + self.discount_factor * self.q_table[next_state][best_next_action]
+            td_target = reward # + self.discount_factor * self.q_table[next_state][best_next_action]
 
-        td_delta = td_target - self.q_table[current_state][action]
+        td_delta = td_target #- self.q_table[current_state][action]
 
         self.q_table[current_state][action] += self.learning_rate * td_delta
 
@@ -187,11 +196,13 @@ class QLearningTrainer:
 
         # 전송 데이터가 0인 경우 음의 보상
         if throughput == 0:
-            return -1  * self.get_node_priority(action)
+            return -1 * self.get_node_priority(action)
 
-        reward = 0.01 * self.get_throughput(action) * self.get_node_priority(action)
-        # reward = 1 * self.get_node_priority(action)
+        # reward = 0.01 * self.get_throughput(action) * self.get_node_priority(action)
+        reward = 1 * self.get_node_priority(action)
 
+
+        # reward = 1
         return reward
 
 
@@ -224,10 +235,17 @@ class QLearningTrainer:
             # return random.sample([i for i in range(self.node_count)], self.time_slots)
             return [i for i in range(self.node_count)] + [-1 for _ in range(self.time_slots - self.node_count)]
 
+        if self.exploration_rate >= 0.1:
+            self.exploration_rate -= 0.001
+        assert len(self.action_queue) == 0 or len(self.action_queue) == 8
+        self.initialize_action_queue()
+
         unallocated = -1
         time_slots = [unallocated for _ in range(self.time_slots)]
 
         state: State = State(phase=phase, slot=0)
+
+        self.strategy = "explore" if np.random.rand() < self.exploration_rate else "exploit"
 
         for i in range(self.time_slots):
             node: int = self.choose_action(current_state=state)
