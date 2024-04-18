@@ -24,7 +24,7 @@ env = simpy.Environment()  # Create the SimPy environment
 simulation_time = int(JSONConfig.get_config("simulation_time"))  # Set the simulation run time(in seconds)
 NODE_COUNT = int(JSONConfig.get_config("node_count"))  # count for non-coordinator node(s), MAX: 8
 
-WEIGHT = int(JSONConfig.get_config("priority_weight"))
+WEIGHT = float(JSONConfig.get_config("priority_weight"))
 
 use_q_learning = bool(JSONConfig.get_config("use_q_learning"))
 
@@ -44,7 +44,7 @@ def get_ban_sscs(mobility_helper: MobilityHelper, tracers: list[Tracer]):
     sscs = BanSSCS(
         node_count=NODE_COUNT,
         mobility_helper=mobility_helper,
-        node_priority=tuple(i+WEIGHT for i in range(NODE_COUNT)),
+        node_priority=tuple(i*WEIGHT for i in range(1, NODE_COUNT + 1)),
         coordinator=True,
         tracers=tracers
     )
