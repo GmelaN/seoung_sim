@@ -4,6 +4,8 @@ import json
 import simpy
 from simpy.events import NORMAL
 
+# test comment
+
 from ban.base.channel.channel import Channel
 from ban.base.channel.prop_delay_model import PropDelayModel
 from ban.base.channel.prop_loss_model import PropLossModel
